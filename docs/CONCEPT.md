@@ -24,50 +24,8 @@ This section is now meant to be a working product plan rather than a pure brains
 
 ---
 
-## Current Status Snapshot
-
-### Already in place in the repo
-
-- [x] Backend and mobile workspaces are initialized
-- [x] Twilio / speech / OpenAI / Supabase-oriented backend structure exists
-- [x] User authentication routes and JWT middleware exist
-- [x] Mobile app has transcript, notes, call detail, settings, and upgrade surfaces
-- [x] Core value proposition is already visible in the product shape: call history, transcript review, summary display, and notes
-- [x] Usage and call-cost tracking foundations exist in backend services
-- [x] SEO comparison pages exist for discovery
-
-### Product reality check
-
-Emmaline is closest to viability when framed as a focused voice productivity tool, not a universal assistant on day one. The publishable version should be about:
-
-- calling or speaking to the assistant hands-free
-- getting transcripts, summaries, and notes back reliably
-- giving users one or two clear modes rather than ten half-built promises
-
-That means the best near-term product framing is:
-
-1. AI phone assistant for real conversations
-2. transcript and note-taking companion
-3. optional quiet listening / transcription mode for situations where the user wants capture, not conversation
-
----
-
 ## Phase 1: Publishable MVP with Cloud Infrastructure
 
-### Phase 1 Goal
-
-Ship a product that feels coherent and useful right away: voice-first conversation, saved transcripts, summaries, notes, and a lightweight listen mode that expands use cases without requiring full virtual-assistant automation.
-
-### Phase 1 Features Already Effectively Crossed Off
-
-- [x] Bootstrap individual workspaces with package.json
-- [x] Begin backend scaffolding
-- [x] Initialize React Native mobile app
-- [x] Basic user authentication foundation
-- [x] Transcript timeline, call detail, and notes UI foundations
-- [x] Exact usage / token / duration accounting foundation
-- [x] Upgrade / billing surface foundation
-- [x] SEO pages for AI phone assistant discovery
 
 ### Phase 1 Publish Blockers
 
@@ -89,6 +47,8 @@ These are the major items still worth focusing on to make the app viable rather 
 - [ ] Turn the upgrade / paywall foundation into a real purchasable flow
 - [ ] Decide whether RevenueCat, Superwall, or a simpler first-party gating approach is the Phase 1 path
 - [ ] Make usage limits understandable to users
+- [ ] Track LLM API token usage per call / summary / user so we know when a user needs to pay more
+- [ ] Track provider cost vs. billed revenue so we can verify margins are positive
 
 4. Tracking, monitoring, and launch instrumentation
 - [ ] Connect the standard launch tooling stack: Resend, PostHog, Sentry
@@ -96,6 +56,12 @@ These are the major items still worth focusing on to make the app viable rather 
   - GTM / UTM on the website
   - app analytics and install attribution in the app itself
 - [ ] Track the key funnel events: signup, trial/upgrade intent, call started, call completed, note created
+- [ ] Map the LLMs/providers we want to test and compare quality vs. cost
+  - OpenAI
+  - DeepSeek
+  - Kimi
+  - other low-cost / open-source-compatible providers we connect over time
+- [ ] Add a simple quality review loop for model outputs so we can test whether cheaper providers are good enough before routing real users onto them
 
 5. Legal and trust requirements
 - [ ] Publish Privacy Policy and Terms of Use
@@ -110,15 +76,7 @@ These are the major items still worth focusing on to make the app viable rather 
 - [ ] Dedicated personal phone number per user
 - [ ] Deep affiliate or venue-specific attribution systems
 
-### Phase 1 Positioning Notes
 
-The strongest publishable story is not "do everything a virtual assistant can do." It is:
-
-- hands-free AI conversation when the user wants to talk
-- quiet capture mode when the user wants transcription and notes
-- persistent transcripts, summaries, and notes after the session ends
-
-That is already a meaningful product lane, and it is easier to message than promising receptionist, translator, developer assistant, and legal assistant capabilities all at once.
 
 ---
 
@@ -139,42 +97,6 @@ Extend the MVP into a more capable assistant without losing the core voice-and-n
 - Developer-focused assistant tasks such as code project initiation on the go
 - Language-support experiments, including translation or language-teacher flows where speech tooling makes sense
 
-**Improvements:**
-
-- Conversation search and filtering
-- Integration with developer tools (GitHub, email, project management)
-- Chat interface for text-based conversations using the same note system
-- More structured output from both calls and listen sessions
-
-### Privacy Model: Tier 2 - Enhanced Privacy with Local Options
-
-**What's different from Phase 1:**
-- Option for users to run summarization locally (on backend) instead of sending to OpenAI
-- Automatic transcript deletion after configurable period (default 30 days)
-- End-to-end encryption option for stored transcripts
-- User consent dashboard showing all data flows
-- GDPR and privacy law compliance features
-
-**Security measures (additional):**
-- Local LLM option for summarization (smaller models on backend)
-- Database-level encryption options (beyond default)
-- Audit logs of who accessed what data
-- Data export functionality for user portability
-- Configurable data retention policies per conversation
-
-**User expectations:**
-- Users can choose between cloud and local processing
-- Opt-in/opt-out for each external service
-- Privacy dashboard showing data usage
-- Ability to download their full data in standard format
-
-**Advantages over Phase 1:**
-- More user control over data routing
-- Faster processing (local summarization)
-- Better privacy for sensitive conversations
-- Compliance-ready for regulated industries
-
----
 
 ## Phase 3: Completely Local & Private
 
@@ -205,85 +127,10 @@ These are interesting longer-term assistant directions, but they should be treat
   - Lawyer specialization: review work, document drafting, intake
   - Coder specialization: developer execution and project support
   - Customer support agent: triage, response suggestions, escalation
+- Privacy Model: Tier 3 - Completely Local & Private
+  - Zero external API calls during conversation
+  - All processing happens on user's device or self-hosted backend  
+  - No data ever leaves the user's infrastructure
+  - Cryptographic verification of model integrity
 
-### Phase 3 Strategy Note
 
-The specialized assistants should not be treated as separate apps at first. The better path is:
-
-1. prove the core interaction model with call mode + listen mode + notes
-2. prove retention around transcripts and summaries
-3. add specialist workflows on top of the same infrastructure once the base product is stable
-
-### Privacy Model: Tier 3 - Completely Local & Private
-
-**What's different:**
-- Zero external API calls during conversation
-- All processing happens on user's device or self-hosted backend
-- No data ever leaves the user's infrastructure
-- Cryptographic verification of model integrity
-
-**Security measures:**
-- End-to-end encrypted if using shared backend
-- No third-party access to any conversation data
-- User has full control of data deletion
-- Open-source components (community auditable)
-
-**User expectations:**
-- Complete privacy guarantee
-- Compliance with strictest privacy regulations (GDPR, HIPAA, etc.)
-- No tracking, no analytics, no data sales
-- Suitable for highly sensitive conversations (medical, legal, financial)
-
-**Trade-offs:**
-- Slower responses (local LLMs are less powerful than GPT-4)
-- Larger device storage requirements (models are 1-20GB)
-- Requires more powerful hardware
-- Setup more complex for end users
-- Less accurate transcription (Whisper vs. Google Cloud)
-
-**Target users:**
-- Privacy-conscious developers
-- Enterprise with strict data residency requirements
-- Regulated industries (healthcare, legal)
-- Users who want complete autonomy
-
----
-
-## Core Components
-
-- **Phone Gateway**: Twilio Voice integration
-- **Backend Service**: Handles call routing, orchestration, and AI logic
-- **Speech Processing**: Speech-to-text and text-to-speech services
-- **AI Engine**: Conversational AI backbone
-- **Database**: Supabase (transcripts, summaries, notes)
-- **Mobile App**: Timeline view and note organization
-- **Summarization Service**: Automatic key point extraction
-
----
-
-## Technical Stack (Preliminary)
-
-- **Phone Service**: Twilio
-- **Backend**: Node.js + Express
-- **Database**: Supabase (PostgreSQL)
-- **Frontend**: React Native (mobile)
-- **AI**: OpenAI API (Phase 1-2), Local LLMs (Phase 3)
-- **Speech Services**: Google Cloud Speech-to-Text & Text-to-Speech (Phase 1-2), Whisper & Piper (Phase 3)
-
----
-
-## Next Steps
-
-1. ✅ Define folder architecture (complete)
-2. ✅ Plan privacy model (complete)
-3. ✅ Create roadmap with phases (complete)
-4. ✅ Bootstrap individual workspaces with package.json
-5. ✅ Begin backend scaffolding
-6. ✅ Initialize React Native mobile app
-7. ✅ Establish authentication, transcript, notes, and call detail foundations
-8. Finish Phase 1 publish blockers in this order:
-  - legal / privacy / consent
-  - billing and upgrade flow
-  - listen mode
-  - responsiveness and reliability tuning
-  - launch analytics and monitoring
