@@ -4,14 +4,36 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const normalizeSupabaseUrl = (value) => {
+  const url = String(value || '').trim();
+
+  if (!url) {
+    return '';
+  }
+
+  return url.replace(/\/rest\/v1\/?$/, '');
+};
+
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const getSupabaseHost = () => {
+  try {
+    return supabaseUrl ? new URL(supabaseUrl).host : 'missing';
+  } catch {
+    return 'invalid';
+  }
+};
 
 let supabase = null;
 
 // Initialize Supabase only if credentials are provided
 if (supabaseUrl && supabaseKey) {
   try {
+    if (process.env.SUPABASE_URL !== supabaseUrl) {
+      console.warn('SUPABASE_URL included /rest/v1; normalizing to project root URL for Supabase client');
+    }
+
     supabase = createClient(supabaseUrl, supabaseKey);
     console.log('✓ Supabase client initialized');
   } catch (error) {
@@ -28,6 +50,14 @@ export const getSupabaseClient = () => {
   }
   return supabase;
 };
+
+export const getSupabaseDebugInfo = () => ({
+  configured: Boolean(supabaseUrl && supabaseKey),
+  originalUrl: String(process.env.SUPABASE_URL || ''),
+  normalizedUrl: supabaseUrl,
+  host: getSupabaseHost(),
+  normalizedRestSuffix: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_URL !== supabaseUrl)
+});
 
 const normalizePhoneNumberForStorage = (rawValue) => {
   const value = String(rawValue || '').trim();

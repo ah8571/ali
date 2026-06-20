@@ -5,7 +5,7 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { getSupabaseClient } from './databaseService.js';
+import { getSupabaseClient, getSupabaseDebugInfo } from './databaseService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d';
@@ -43,6 +43,7 @@ export const verifyToken = (token) => {
  */
 export const registerUser = async (email, password, marketingOptIn = false) => {
   const supabase = getSupabase();
+  const supabaseDebug = getSupabaseDebugInfo();
 
   // Validate input
   if (!email || !password) {
@@ -54,13 +55,42 @@ export const registerUser = async (email, password, marketingOptIn = false) => {
   }
 
   // Check if user already exists
-  const { data: existingUser, error: existingUserError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle();
+  let existingUser;
+  let existingUserError;
+
+  try {
+    ({ data: existingUser, error: existingUserError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle());
+  } catch (error) {
+    console.error('Supabase existing-user lookup threw before response', {
+      message: error.message,
+      cause: error.cause?.message || null,
+      supabase: {
+        configured: supabaseDebug.configured,
+        host: supabaseDebug.host,
+        normalizedRestSuffix: supabaseDebug.normalizedRestSuffix,
+        normalizedUrl: supabaseDebug.normalizedUrl
+      }
+    });
+    throw new Error(`Failed to check existing user: ${error.message} (supabase host: ${supabaseDebug.host})`);
+  }
 
   if (existingUserError) {
+    console.error('Supabase existing-user lookup returned an error response', {
+      message: existingUserError.message,
+      code: existingUserError.code || null,
+      details: existingUserError.details || null,
+      hint: existingUserError.hint || null,
+      supabase: {
+        configured: supabaseDebug.configured,
+        host: supabaseDebug.host,
+        normalizedRestSuffix: supabaseDebug.normalizedRestSuffix,
+        normalizedUrl: supabaseDebug.normalizedUrl
+      }
+    });
     throw new Error(`Failed to check existing user: ${existingUserError.message}`);
   }
 
