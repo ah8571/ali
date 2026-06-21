@@ -83,6 +83,7 @@ export const saveCall = async (userId, callData) => {
     .insert({
       user_id: userId,
       phone_number: normalizePhoneNumberForStorage(callData.phoneNumber),
+      call_mode: callData.callMode || 'live_call',
       call_duration_seconds: callData.duration,
       started_at: callData.startedAt,
       ended_at: callData.endedAt,

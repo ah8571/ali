@@ -4,12 +4,14 @@
  */
 
 import speech from '@google-cloud/speech';
+import { OpenAI, toFile } from 'openai';
 import {
   getGoogleCloudClientOptions,
   hasGoogleCloudCredentials
 } from './googleCloudAuth.js';
 
 let speechClient = null;
+let openaiClient = null;
 
 const LANGUAGE_CONFIGS = {
   en: {
@@ -67,6 +69,21 @@ const getSpeechClient = () => {
 
   speechClient = new speech.SpeechClient(getGoogleCloudClientOptions());
   return speechClient;
+};
+
+const getOpenAIClient = () => {
+  if (openaiClient) {
+    return openaiClient;
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured for uploaded audio transcription');
+  }
+
+  openaiClient = new OpenAI({ apiKey });
+  return openaiClient;
 };
 
 /**
@@ -231,6 +248,26 @@ export const validateSpeechConfig = () => {
   }
 };
 
+export const transcribeUploadedAudio = async (file, options = {}) => {
+  if (!file?.buffer?.length) {
+    throw new Error('Uploaded audio file was empty');
+  }
+
+  const languagePreference = resolveLanguagePreference(options.languagePreference);
+  const language = languagePreference === 'es' ? 'es' : 'en';
+  const audioFile = await toFile(file.buffer, file.originalname || 'listen-mode.m4a', {
+    type: file.mimetype || 'audio/mp4'
+  });
+  const response = await getOpenAIClient().audio.transcriptions.create({
+    file: audioFile,
+    model: process.env.OPENAI_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe',
+    language,
+    response_format: 'json'
+  });
+
+  return String(response.text || '').trim();
+};
+
 export default {
   createStreamingRecognizer,
   transcribeAudioChunk,
@@ -238,6 +275,7 @@ export default {
   parseStreamingResponse,
   processAudioChunk,
   createStreamingRecognizeRequest,
+  transcribeUploadedAudio,
   resolveLanguagePreference,
   validateSpeechConfig,
   getSpeechClient

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LoginScreen from '../screens/LoginScreen';
 import TranscriptScreen from '../screens/TranscriptScreen';
 import NotesScreen from '../screens/NotesScreen';
+import ReaderScreen from '../screens/ReaderScreen';
 import CreateNoteScreen from '../screens/CreateNoteScreen';
 import CallDetailScreen from '../screens/CallDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -119,7 +120,7 @@ const AppHome = ({ onLogout }) => {
     setUiState((currentState) => ({
       ...currentState,
       activeScreen: screen,
-        menuOpen: false
+      menuOpen: false
     }));
   };
 
@@ -221,6 +222,13 @@ const AppHome = ({ onLogout }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
+              onPress={() => openScreen('reader')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Reader</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
               onPress={() => openScreen('upgrade')}
               activeOpacity={0.8}
             >
@@ -257,6 +265,8 @@ const AppHome = ({ onLogout }) => {
           ? <TranscriptStack stackKey={`transcripts-${transcriptStackVersion}`} onAppHeaderScroll={handleAppHeaderScroll} transcriptResetToken={transcriptResetToken} />
           : activeScreen === 'notes'
             ? <NotesStack stackKey={`notes-${notesStackVersion}`} onAppHeaderScroll={handleAppHeaderScroll} notesResetToken={notesResetToken} />
+            : activeScreen === 'reader'
+              ? <ReaderScreen onAppHeaderScroll={handleAppHeaderScroll} />
             : activeScreen === 'upgrade'
               ? <UpgradeScreen />
               : <SettingsScreen onLogout={onLogout} onOpenUpgrade={() => openScreen('upgrade')} />}

@@ -3,7 +3,12 @@ import { StyleSheet, Alert, View, Image, Text, TouchableOpacity } from 'react-na
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppNavigator from './navigation/AppNavigator';
 import FloatingCallButton from './components/FloatingCallButton';
-import { getVoiceToken } from './services/api.js';
+import { getVoiceToken, uploadListenModeRecording } from './services/api.js';
+import {
+  isListenModeRecordingActive,
+  startListenModeRecording,
+  stopListenModeRecording
+} from './services/listenModeService.js';
 import {
   endVoiceCall,
   ensureMicrophonePermission,
@@ -38,6 +43,7 @@ const AppContent = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLaunchSplash, setShowLaunchSplash] = useState(true);
   const [showCallModePicker, setShowCallModePicker] = useState(false);
+  const [listenModeState, setListenModeState] = useState('idle');
 
   const colors = isDarkMode ? darkColors : lightColors;
   const appBottomRailHeight = Math.max(insets.bottom, 12) + APP_BOTTOM_RAIL_HEIGHT;
@@ -97,6 +103,7 @@ const AppContent = () => {
     setSelectedAudioDevice(null);
     setIsMuted(false);
     setShowCallModePicker(false);
+    setListenModeState('idle');
 
     endVoiceCall().catch(() => {
       // Best-effort cleanup when the user logs out.
@@ -221,7 +228,58 @@ const AppContent = () => {
       return;
     }
 
+    if (isListenModeRecordingActive()) {
+      await handleStopListenMode();
+      return;
+    }
+
+    if (listenModeState === 'processing') {
+      Alert.alert('Listen Mode', 'Your recording is still uploading and being summarized.');
+      return;
+    }
+
     setShowCallModePicker(true);
+  };
+
+  const handleStartListenMode = async () => {
+    const response = await startListenModeRecording();
+
+    if (!response.success) {
+      Alert.alert('Listen Mode unavailable', response.error || 'Unable to start Listen Mode recording.');
+      return;
+    }
+
+    setListenModeState('recording');
+  };
+
+  const handleStopListenMode = async () => {
+    setListenModeState('processing');
+
+    try {
+      const stopResponse = await stopListenModeRecording();
+
+      if (!stopResponse.success || !stopResponse.recording) {
+        throw new Error(stopResponse.error || 'Unable to stop Listen Mode recording.');
+      }
+
+      const languagePreference = await getCallLanguagePreference();
+      const uploadResponse = await uploadListenModeRecording(stopResponse.recording, languagePreference || 'en');
+
+      if (!uploadResponse.success) {
+        throw new Error(uploadResponse.error || 'Unable to process Listen Mode recording.');
+      }
+
+      setListenModeState('saved');
+      Alert.alert('Listen Mode saved', 'Your recording was transcribed and added to Transcripts.');
+    } catch (error) {
+      setListenModeState('failed');
+      Alert.alert('Listen Mode failed', error.message || 'Unable to finish Listen Mode right now.');
+      return;
+    }
+
+    setTimeout(() => {
+      setListenModeState('idle');
+    }, 2200);
   };
 
   const handleSelectCallMode = async (mode) => {
@@ -232,10 +290,7 @@ const AppContent = () => {
       return;
     }
 
-    Alert.alert(
-      'Listen Mode coming soon',
-      'The launcher is in place, but Listen Mode still needs the dedicated recording and summary pipeline before it can be used in the app.'
-    );
+    await handleStartListenMode();
   };
 
   const handleSelectAudioRoute = async (deviceUuid) => {
@@ -315,21 +370,29 @@ const AppContent = () => {
         {isAuthenticated ? (
           <FloatingCallButton
             onPress={handleInitiateCall}
-            isActiveCall={isCalling}
+            isActiveCall={isCalling || listenModeState === 'recording' || listenModeState === 'processing'}
             statusLabel={
-              callStatus === 'idle'
-                ? null
-                : callStatus === 'connecting'
-                  ? 'Connecting...'
-                  : callStatus === 'ringing'
-                    ? 'Ringing...'
-                    : callStatus === 'live'
-                      ? 'Live'
-                      : callStatus === 'reconnecting'
-                        ? 'Reconnecting...'
-                        : callStatus === 'ended'
-                          ? 'Call ended'
-                          : 'Call failed'
+              listenModeState === 'recording'
+                ? 'Listening... tap to stop'
+                : listenModeState === 'processing'
+                  ? 'Processing recording...'
+                  : listenModeState === 'saved'
+                    ? 'Listen Mode saved'
+                    : listenModeState === 'failed'
+                      ? 'Listen Mode failed'
+                      : callStatus === 'idle'
+                        ? null
+                        : callStatus === 'connecting'
+                          ? 'Connecting...'
+                          : callStatus === 'ringing'
+                            ? 'Ringing...'
+                            : callStatus === 'live'
+                              ? 'Live'
+                              : callStatus === 'reconnecting'
+                                ? 'Reconnecting...'
+                                : callStatus === 'ended'
+                                  ? 'Call ended'
+                                  : 'Call failed'
             }
             audioRoutes={audioRouteOptions}
             selectedAudioRoute={selectedAudioDevice?.uuid || null}
@@ -363,9 +426,6 @@ const AppContent = () => {
               >
                 <View style={styles.modePickerOptionHeader}>
                   <Text style={[styles.modePickerOptionTitle, { color: colors.text }]}>Listen Mode</Text>
-                  <View style={[styles.modePickerSoonBadge, { backgroundColor: colors.chipSelectedBg }]}> 
-                    <Text style={[styles.modePickerSoonBadgeText, { color: colors.chipSelectedText }]}>Soon</Text>
-                  </View>
                 </View>
                 <Text style={[styles.modePickerOptionDescription, { color: colors.mutedText }]}>Record, transcribe, and summarize a conversation without the live assistant voice loop.</Text>
               </TouchableOpacity>
@@ -470,13 +530,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
-  modePickerSoonBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4
-  },
-  modePickerSoonBadgeText: {
-    fontSize: 11,
-    fontWeight: '700'
-  }
 });

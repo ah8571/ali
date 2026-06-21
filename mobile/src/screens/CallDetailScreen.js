@@ -6,7 +6,7 @@ import { useAppTheme } from '../theme/appTheme.js';
 import FloatingBackButton from '../components/FloatingBackButton';
 
 const getTranscriptModeLabel = (callRecord) => {
-  const rawMode = callRecord?.callType || callRecord?.transcriptType || callRecord?.mode || callRecord?.sourceType || '';
+  const rawMode = callRecord?.callMode || callRecord?.callType || callRecord?.transcriptType || callRecord?.mode || callRecord?.sourceType || '';
 
   if (typeof rawMode === 'string' && /listen/i.test(rawMode)) {
     return 'Listen Mode';
@@ -21,10 +21,14 @@ const CallDetailScreen = ({ route, navigation, onAppHeaderScroll, transcriptRese
   const { callId } = route.params;
   const [call, setCall] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const lastTranscriptResetTokenRef = useRef(transcriptResetToken);
 
-  async function loadCallDetail() {
-    setLoading(true);
+  async function loadCallDetail(options = {}) {
+    if (!options.silent) {
+      setLoading(true);
+    }
+
     try {
       const response = await getCallDetail(callId);
 
@@ -33,10 +37,14 @@ const CallDetailScreen = ({ route, navigation, onAppHeaderScroll, transcriptRese
       }
 
       setCall(response.call);
+      setErrorMessage('');
     } catch (error) {
       console.error('Error loading call:', error);
+      setErrorMessage(error.message || 'Unable to load call details');
     } finally {
-      setLoading(false);
+      if (!options.silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -46,18 +54,13 @@ const CallDetailScreen = ({ route, navigation, onAppHeaderScroll, transcriptRese
 
   useEffect(() => {
     const unsubscribeFocus = navigation.addListener('focus', () => {
-      loadCallDetail();
+      loadCallDetail({ silent: Boolean(call) });
     });
 
-    const pollId = setInterval(() => {
-      loadCallDetail();
-    }, 4000);
-
     return () => {
-      clearInterval(pollId);
       unsubscribeFocus();
     };
-  }, [callId, navigation]);
+  }, [call, callId, navigation]);
 
   useEffect(() => {
     return () => {
@@ -84,7 +87,7 @@ const CallDetailScreen = ({ route, navigation, onAppHeaderScroll, transcriptRese
   if (!call) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }] }>
-        <Text style={[styles.errorText, { color: colors.danger }]}>Call not found</Text>
+        <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage || 'Call not found'}</Text>
       </View>
     );
   }

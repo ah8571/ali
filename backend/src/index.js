@@ -16,7 +16,9 @@ import callRoutes from './routes/calls.js';
 import noteRoutes from './routes/notes.js';
 import authRoutes from './routes/auth.js';
 import billingRoutes from './routes/billing.js';
+import listenRoutes from './routes/listen.js';
 import newsletterRoutes from './routes/newsletter.js';
+import readerRoutes from './routes/reader.js';
 import voiceRoutes from './routes/voice.js';
 
 // Import middleware
@@ -97,7 +99,9 @@ app.use('/api/calls', callRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/listen', listenRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/reader', readerRoutes);
 app.use('/api/voice', voiceRoutes);
 
 app.use('/twilio', twilioRoutes);
@@ -105,7 +109,9 @@ app.use('/calls', callRoutes);
 app.use('/notes', noteRoutes);
 app.use('/auth', authRoutes);
 app.use('/billing', billingRoutes);
+app.use('/listen', listenRoutes);
 app.use('/newsletter', newsletterRoutes);
+app.use('/reader', readerRoutes);
 app.use('/voice', voiceRoutes);
 
 // Health check
@@ -129,6 +135,8 @@ app.get('/', (req, res) => {
       notes: '/api/notes',
       auth: '/api/auth',
       billing: '/api/billing',
+      listen: '/api/listen',
+      reader: '/api/reader',
       voice: '/api/voice',
       websocket: `${websocketProtocol}://${forwardedHost}/ws/media-stream`,
       websocketEcho: `${websocketProtocol}://${forwardedHost}/ws/echo`

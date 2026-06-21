@@ -42,6 +42,9 @@ const mapCallRecord = (call) => {
   return {
     id: call.id,
     phoneNumber: call.phone_number,
+    callMode: call.call_mode || 'live_call',
+    callType: call.call_mode || 'live_call',
+    mode: call.call_mode || 'live_call',
     callDurationSeconds: call.call_duration_seconds,
     startedAt: call.started_at,
     endedAt: call.ended_at,

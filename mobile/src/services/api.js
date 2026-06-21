@@ -277,6 +277,92 @@ export const getBillingStatus = async () => {
   }
 };
 
+export const importReaderDocument = async (fileAsset) => {
+  try {
+    const token = await SecureStorage.getToken();
+
+    if (!token) {
+      return {
+        success: false,
+        error: 'You need to log in again before importing a document.'
+      };
+    }
+
+    const formData = new FormData();
+    formData.append('document', {
+      uri: fileAsset.uri,
+      name: fileAsset.name || 'document',
+      type: fileAsset.mimeType || 'application/octet-stream'
+    });
+
+    const response = await axios.post(`${API_BASE_URL}/reader/extract`, formData, {
+      timeout: REQUEST_TIMEOUT,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    return {
+      success: true,
+      title: response.data.title,
+      text: response.data.text,
+      metadata: response.data.metadata || null
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: formatApiError(error, 'Failed to import document')
+    };
+  }
+};
+
+export const uploadListenModeRecording = async (recordingAsset, languagePreference = 'en') => {
+  try {
+    const token = await SecureStorage.getToken();
+
+    if (!token) {
+      return {
+        success: false,
+        error: 'You need to log in again before using Listen Mode.'
+      };
+    }
+
+    const formData = new FormData();
+    formData.append('audio', {
+      uri: recordingAsset.uri,
+      name: recordingAsset.name || 'listen-mode.m4a',
+      type: recordingAsset.mimeType || 'audio/mp4'
+    });
+    formData.append('durationMs', String(recordingAsset.durationMs || 0));
+    formData.append('startedAt', recordingAsset.startedAt || new Date().toISOString());
+    formData.append('endedAt', recordingAsset.endedAt || new Date().toISOString());
+    formData.append('languagePreference', languagePreference || 'en');
+
+    const response = await axios.post(`${API_BASE_URL}/listen/sessions`, formData, {
+      timeout: 120000,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    return {
+      success: true,
+      callId: response.data.callId,
+      transcript: response.data.transcript || '',
+      summary: response.data.summary || '',
+      keyPoints: response.data.keyPoints || [],
+      actionItems: response.data.actionItems || []
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: formatApiError(error, 'Failed to process Listen Mode recording')
+    };
+  }
+};
+
 /**
  * End an active call
  */

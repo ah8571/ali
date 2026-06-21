@@ -19,7 +19,7 @@ import { designTokens } from '../theme/designSystem.js';
 const BOTTOM_SAFE_ZONE = 44;
 
 const getTranscriptModeLabel = (callRecord) => {
-  const rawMode = callRecord?.callType || callRecord?.transcriptType || callRecord?.mode || callRecord?.sourceType || '';
+  const rawMode = callRecord?.callMode || callRecord?.callType || callRecord?.transcriptType || callRecord?.mode || callRecord?.sourceType || '';
 
   if (typeof rawMode === 'string' && /listen/i.test(rawMode)) {
     return 'Listen Mode';

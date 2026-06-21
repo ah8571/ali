@@ -39,6 +39,9 @@ ALTER TABLE users
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS auto_recharge_amount_seconds INTEGER NOT NULL DEFAULT 300;
 
+ALTER TABLE calls
+  ADD COLUMN IF NOT EXISTS call_mode VARCHAR(30) NOT NULL DEFAULT 'live_call';
+
 -- Dedicated phone numbers (one active assignment per user)
 CREATE TABLE IF NOT EXISTS user_phone_numbers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -58,6 +61,7 @@ CREATE TABLE calls (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   phone_number VARCHAR(20) NOT NULL,
+  call_mode VARCHAR(30) NOT NULL DEFAULT 'live_call',
   call_duration_seconds INTEGER,
   started_at TIMESTAMP WITH TIME ZONE NOT NULL,
   ended_at TIMESTAMP WITH TIME ZONE,

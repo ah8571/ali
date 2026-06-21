@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,8 +9,9 @@ import {
   ActivityIndicator,
   SectionList
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getNotes, getTopics } from '../services/api.js';
+import { deleteNote, getNotes, getTopics } from '../services/api.js';
 import NoteCard from '../components/NoteCard';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
@@ -30,6 +32,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [noteTextScale, setNoteTextScale] = useState(1);
+  const [selectedNoteIds, setSelectedNoteIds] = useState([]);
 
   const loadNotes = useCallback(async (topicOverride = selectedTopic, options = {}) => {
     if (!options.silent) {
@@ -106,15 +109,14 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
       });
     });
 
-    const pollId = setInterval(() => {
-      loadNotes(selectedTopic, { silent: true });
-    }, 4000);
-
     return () => {
-      clearInterval(pollId);
       unsubscribeFocus();
     };
   }, [loadNotes, loadTopics, navigation, selectedTopic]);
+
+  useEffect(() => {
+    setSelectedNoteIds((currentSelection) => currentSelection.filter((noteId) => notes.some((note) => note.id === noteId)));
+  }, [notes]);
 
   const handleCreateNote = () => {
     navigation.navigate('CreateNote');
@@ -141,10 +143,70 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   }
 
   const handleEditNote = (note) => {
+    if (selectedNoteIds.length > 0) {
+      setSelectedNoteIds((currentSelection) => (
+        currentSelection.includes(note.id)
+          ? currentSelection.filter((noteId) => noteId !== note.id)
+          : [...currentSelection, note.id]
+      ));
+      return;
+    }
+
     navigation.navigate('CreateNote', { note });
   };
 
-  const renderNote = ({ item }) => <NoteCard note={item} noteTextScale={noteTextScale} onPress={() => handleEditNote(item)} />;
+  const handleSelectNote = (noteId) => {
+    setSelectedNoteIds((currentSelection) => {
+      if (currentSelection.includes(noteId)) {
+        return currentSelection.filter((currentNoteId) => currentNoteId !== noteId);
+      }
+
+      return [...currentSelection, noteId];
+    });
+  };
+
+  const handleDeleteSelectedNotes = () => {
+    if (selectedNoteIds.length === 0) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete notes',
+      `Delete ${selectedNoteIds.length} selected ${selectedNoteIds.length === 1 ? 'note' : 'notes'}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const deletionResults = await Promise.all(selectedNoteIds.map((noteId) => deleteNote(noteId)));
+            const hasFailure = deletionResults.some((result) => !result.success);
+
+            if (hasFailure) {
+              Alert.alert('Delete failed', 'One or more selected notes could not be deleted.');
+            }
+
+            setSelectedNoteIds([]);
+            loadNotes(selectedTopic, { silent: true });
+          }
+        }
+      ]
+    );
+  };
+
+  const renderNote = ({ item }) => (
+    <NoteCard
+      note={item}
+      noteTextScale={noteTextScale}
+      onPress={() => handleEditNote(item)}
+      onLongPress={() => handleSelectNote(item.id)}
+      isSelected={selectedNoteIds.includes(item.id)}
+      selectionMode={selectedNoteIds.length > 0}
+    />
+  );
 
   const renderSectionHeader = ({ section: { title } }) => (
     !title ? null : (
@@ -157,13 +219,20 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const renderListHeader = () => (
     <>
       <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Notes</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateNote}
-        >
-          <Text style={[styles.createButtonText, { color: colors.text }]}>+</Text>
-        </TouchableOpacity>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>{selectedNoteIds.length > 0 ? `${selectedNoteIds.length} selected` : 'Notes'}</Text>
+        <View style={styles.headerActions}>
+          {selectedNoteIds.length > 0 ? (
+            <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedNotes}>
+              <Feather name="trash-2" size={20} color={colors.text} />
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={selectedNoteIds.length > 0 ? () => setSelectedNoteIds([]) : handleCreateNote}
+          >
+            <Text style={[styles.createButtonText, { color: colors.text }]}>{selectedNoteIds.length > 0 ? 'Done' : '+'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {topics.length > 0 ? (
@@ -279,6 +348,17 @@ const styles = StyleSheet.create({
     minHeight: 28,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  iconButton: {
+    minWidth: 28,
+    minHeight: 28,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   createButtonText: {
     fontSize: 36,

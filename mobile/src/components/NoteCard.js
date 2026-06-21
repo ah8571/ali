@@ -7,7 +7,7 @@ import { stripNoteContentToPlainText } from '../utils/noteContent.js';
  * NoteCard component
  * Displays a note preview
  */
-const NoteCard = ({ note, onPress, noteTextScale = 1 }) => {
+const NoteCard = ({ note, onPress, onLongPress, noteTextScale = 1, isSelected = false, selectionMode = false }) => {
   const { colors } = useAppTheme();
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -20,11 +20,29 @@ const NoteCard = ({ note, onPress, noteTextScale = 1 }) => {
   const previewText = stripNoteContentToPlainText(note.content || '');
 
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        {
+          backgroundColor: isSelected ? colors.chipSelectedBg : colors.surface,
+          borderColor: isSelected ? colors.accent : colors.border
+        }
+      ]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={220}
+      activeOpacity={0.85}
+    >
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, { color: colors.text, fontSize: 14 * noteTextScale }]}>{note.title}</Text>
         <Text style={[styles.cardDate, { color: colors.mutedText, fontSize: 11.5 * noteTextScale }]}>{formatDate(note.updatedAt || note.createdAt)}</Text>
       </View>
+
+      {selectionMode ? (
+        <Text style={[styles.selectionLabel, { color: isSelected ? colors.text : colors.mutedText }]}>
+          {isSelected ? 'Selected' : 'Tap to select'}
+        </Text>
+      ) : null}
       
       <Text style={[styles.cardContent, { color: colors.mutedText, fontSize: 13 * noteTextScale, lineHeight: 18 * noteTextScale }]} numberOfLines={2}>
         {previewText}
@@ -69,6 +87,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#495057',
     lineHeight: 18
+  },
+  selectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3
   }
 });
 

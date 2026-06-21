@@ -121,7 +121,7 @@ const CreateNoteScreen = ({ route, navigation, onAppHeaderScroll, notesResetToke
 
     const snapshot = buildSnapshot(payload);
 
-    if (!force && snapshot === lastSavedSnapshotRef.current) {
+    if (snapshot === lastSavedSnapshotRef.current) {
       updateSaveState('Saved');
       return true;
     }
