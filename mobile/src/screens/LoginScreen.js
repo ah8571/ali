@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import legalContent from '../../../shared/legalContent.json';
+import legalContent from '../content/legalContent.json';
 import { loginUser, registerUser } from '../services/api.js';
 
 /**

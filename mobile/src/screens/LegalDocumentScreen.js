@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import legalContent from '../../../shared/legalContent.json';
+import legalContent from '../content/legalContent.json';
 import { useAppTheme } from '../theme/appTheme.js';
 
 const renderSection = (section, colors) => {
