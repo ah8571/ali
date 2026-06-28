@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getBillingStatus } from '../services/api.js';
+import {
+  getRevenueCatCustomerInfo,
+  getRevenueCatOfferings,
+  getRevenueCatSetupMessage,
+  initializeRevenueCat,
+  isProEntitlementActive,
+  isRevenueCatEnabled,
+  isRevenueCatUserCancelled,
+  purchaseRevenueCatPackage,
+  restoreRevenueCatPurchases
+} from '../services/revenueCatService.js';
+import { getUser } from '../utils/secureStorage.js';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
 
@@ -8,6 +20,12 @@ const UpgradeScreen = () => {
   const { colors } = useAppTheme();
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [offeringPackage, setOfferingPackage] = useState(null);
+  const [offeringsLoading, setOfferingsLoading] = useState(true);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [revenueCatMessage, setRevenueCatMessage] = useState(null);
+  const [isProActive, setIsProActive] = useState(false);
 
   useEffect(() => {
     const loadBilling = async () => {
@@ -23,11 +41,91 @@ const UpgradeScreen = () => {
     loadBilling();
   }, []);
 
-  const handleUpgradePress = () => {
-    Alert.alert(
-      'Billing not live yet',
-      'Subscriptions are not enabled in this build yet. The next implementation step is wiring App Store and Google Play subscriptions through RevenueCat and adding restore purchases.'
-    );
+  useEffect(() => {
+    const loadRevenueCat = async () => {
+      if (!isRevenueCatEnabled()) {
+        setRevenueCatMessage(getRevenueCatSetupMessage());
+        setOfferingsLoading(false);
+        return;
+      }
+
+      try {
+        const currentUser = await getUser();
+        const initResponse = await initializeRevenueCat(currentUser?.id ? String(currentUser.id) : null);
+
+        if (!initResponse.success) {
+          setRevenueCatMessage(initResponse.error || getRevenueCatSetupMessage());
+          return;
+        }
+
+        setIsProActive(Boolean(initResponse.isProActive));
+
+        const offerings = await getRevenueCatOfferings();
+        const currentOffering = offerings?.current || null;
+        const defaultPackage = currentOffering?.monthly || currentOffering?.availablePackages?.[0] || null;
+
+        setOfferingPackage(defaultPackage);
+        setRevenueCatMessage(defaultPackage ? null : 'RevenueCat is connected, but no current offering is available yet. Confirm the default offering includes emmaline_pro_monthly.');
+      } catch (error) {
+        setRevenueCatMessage(error?.message || 'Unable to load subscription pricing right now.');
+      } finally {
+        setOfferingsLoading(false);
+      }
+    };
+
+    loadRevenueCat();
+  }, []);
+
+  const refreshCustomerInfo = async () => {
+    const customerInfo = await getRevenueCatCustomerInfo();
+    setIsProActive(isProEntitlementActive(customerInfo));
+  };
+
+  const handleUpgradePress = async () => {
+    if (!offeringPackage) {
+      Alert.alert('Subscription unavailable', revenueCatMessage || 'No subscription package is ready in this build yet.');
+      return;
+    }
+
+    setPurchaseLoading(true);
+
+    try {
+      const result = await purchaseRevenueCatPackage(offeringPackage);
+      const proActive = isProEntitlementActive(result?.customerInfo);
+      setIsProActive(proActive);
+      Alert.alert(
+        proActive ? 'Subscription active' : 'Purchase complete',
+        proActive
+          ? 'Your Emmaline Pro subscription is active on this account.'
+          : 'The purchase completed, but the pro entitlement is not active yet. Check the RevenueCat product and entitlement mapping.'
+      );
+    } catch (error) {
+      if (!isRevenueCatUserCancelled(error)) {
+        Alert.alert('Purchase failed', error?.message || 'Unable to complete the purchase right now.');
+      }
+    } finally {
+      setPurchaseLoading(false);
+    }
+  };
+
+  const handleRestorePress = async () => {
+    setRestoreLoading(true);
+
+    try {
+      const customerInfo = await restoreRevenueCatPurchases();
+      const proActive = isProEntitlementActive(customerInfo);
+      setIsProActive(proActive);
+      Alert.alert(
+        proActive ? 'Purchases restored' : 'Nothing to restore',
+        proActive
+          ? 'Your Emmaline Pro access has been restored for this account.'
+          : 'No active Emmaline Pro subscription was found for this store account.'
+      );
+    } catch (error) {
+      Alert.alert('Restore failed', error?.message || 'Unable to restore purchases right now.');
+    } finally {
+      setRestoreLoading(false);
+    }
   };
 
   return (
@@ -39,17 +137,43 @@ const UpgradeScreen = () => {
       <View style={styles.section}>
         <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.heroEyebrow, { color: colors.accent }]}>Emmaline Pro</Text>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>$10 / month after your first 5 free minutes</Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>
+            {offeringPackage?.product?.priceString || '$9.99 / month'} after your first 5 free minutes
+          </Text>
           <Text style={[styles.heroDescription, { color: colors.mutedText }]}>
-            Start with 5 free minutes to try the assistant. Subscription billing will be finalized through the mobile app stores, with RevenueCat planned as the entitlement layer.
+            Start with 5 free minutes to try the assistant. When the store configuration is ready, Emmaline Pro unlocks continued access through the App Store or Google Play.
           </Text>
 
+          {revenueCatMessage ? (
+            <Text style={[styles.helperText, { color: colors.mutedText }]}>{revenueCatMessage}</Text>
+          ) : null}
+
+          <View style={[styles.statusBadge, { backgroundColor: isProActive ? colors.chipSelectedBg : colors.surfaceAlt, borderColor: colors.border }]}>
+            <Text style={[styles.statusBadgeText, { color: isProActive ? colors.chipSelectedText : colors.mutedText }]}>
+              {isProActive ? 'Pro active on this account' : offeringsLoading ? 'Loading subscription details...' : 'Pro not active yet'}
+            </Text>
+          </View>
+
           <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: colors.text }]}
+            style={[styles.upgradeButton, { backgroundColor: colors.text }, (purchaseLoading || offeringsLoading || !offeringPackage) && styles.buttonDisabled]}
             onPress={handleUpgradePress}
+            disabled={purchaseLoading || offeringsLoading || !offeringPackage}
             activeOpacity={0.85}
           >
-            <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>Upgrade to Pro</Text>
+            <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>
+              {purchaseLoading ? 'Processing purchase...' : isProActive ? 'Manage Pro access in store account' : 'Upgrade to Pro'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.restoreButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }, restoreLoading && styles.buttonDisabled]}
+            onPress={handleRestorePress}
+            disabled={restoreLoading || offeringsLoading}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.restoreButtonText, { color: colors.text }]}>
+              {restoreLoading ? 'Restoring purchases...' : 'Restore purchases'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -74,7 +198,7 @@ const UpgradeScreen = () => {
         {[
           'Keep talking after the free 5-minute trial is used.',
           'Simple monthly access instead of manual minute tracking.',
-          'A cleaner path to future auto-recharge or usage add-ons.'
+          'Restore purchases across reinstalls and supported devices.'
         ].map((item) => (
           <View key={item} style={styles.bulletRow}>
             <Text style={[styles.bulletMark, { color: colors.text }]}>•</Text>
@@ -138,9 +262,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: designTokens.spacing.lg
   },
+  buttonDisabled: {
+    opacity: 0.55
+  },
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: '700'
+  },
+  restoreButton: {
+    minHeight: 48,
+    borderRadius: designTokens.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: designTokens.spacing.lg,
+    borderWidth: 1
+  },
+  restoreButtonText: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  helperText: {
+    fontSize: designTokens.typography.bodySmall,
+    lineHeight: 18
+  },
+  statusBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-start'
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600'
   },
   sectionTitle: {
     fontSize: designTokens.typography.title,

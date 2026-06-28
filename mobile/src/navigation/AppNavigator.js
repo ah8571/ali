@@ -15,10 +15,11 @@ import SettingsScreen from '../screens/SettingsScreen';
 import UpgradeScreen from '../screens/UpgradeScreen';
 import LegalDocumentScreen from '../screens/LegalDocumentScreen';
 import SupportScreen from '../screens/SupportScreen';
-import { isAuthenticated as hasAuthToken, getUser } from '../utils/secureStorage.js';
+import { isAuthenticated as hasAuthToken, getUser, logout as clearStoredAuth } from '../utils/secureStorage.js';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
-import { logoutUser } from '../services/api.js';
+import { getCurrentUser, logoutUser } from '../services/api.js';
+import { syncRevenueCatUser } from '../services/revenueCatService.js';
 
 const Stack = createStackNavigator();
 
@@ -326,7 +327,19 @@ const AppNavigator = ({ onAuthStateChange }) => {
           return;
         }
 
-        const storedUser = await getUser();
+        const currentUserResponse = await getCurrentUser();
+
+        if (!currentUserResponse.success || !currentUserResponse.user) {
+          await clearStoredAuth();
+          await syncRevenueCatUser(null);
+          Sentry.setUser(null);
+          setIsAuthenticated(false);
+          setUser(null);
+          onAuthStateChange?.(false);
+          return;
+        }
+
+        const storedUser = currentUserResponse.user || await getUser();
         Sentry.setUser(
           storedUser?.id
             ? {
@@ -335,6 +348,7 @@ const AppNavigator = ({ onAuthStateChange }) => {
               }
             : null
         );
+        await syncRevenueCatUser(storedUser?.id ? String(storedUser.id) : null);
         setUser(storedUser);
         setIsAuthenticated(true);
         onAuthStateChange?.(true);
@@ -363,6 +377,9 @@ const AppNavigator = ({ onAuthStateChange }) => {
           }
         : null
     );
+    syncRevenueCatUser(userData?.id ? String(userData.id) : null).catch(() => {
+      // RevenueCat setup is best-effort here; the Upgrade screen surfaces setup issues.
+    });
     setUser(userData);
     setIsAuthenticated(true);
     onAuthStateChange?.(true);
@@ -377,6 +394,7 @@ const AppNavigator = ({ onAuthStateChange }) => {
     }
 
     Sentry.setUser(null);
+    await syncRevenueCatUser(null);
     setUser(null);
     setIsAuthenticated(false);
     onAuthStateChange?.(false);

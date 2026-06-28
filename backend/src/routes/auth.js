@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { registerUser, loginUser, getUserById, refreshToken } from '../services/authService.js';
+import { registerUser, loginUser, loginWithSocialProvider, getUserById, refreshToken } from '../services/authService.js';
 import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
@@ -88,6 +88,53 @@ router.post('/login', async (req, res) => {
     }
 
     return res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+router.post('/social', async (req, res) => {
+  try {
+    const {
+      provider,
+      idToken,
+      email = null,
+      fullName = null,
+      marketingOptIn = false
+    } = req.body;
+
+    if (!provider || !idToken) {
+      return res.status(400).json({ error: 'Provider and identity token are required' });
+    }
+
+    const result = await loginWithSocialProvider({
+      provider,
+      idToken,
+      email,
+      fullName,
+      marketingOptIn
+    });
+
+    return res.status(200).json({
+      message: 'Social login successful',
+      user: result.user,
+      token: result.token
+    });
+  } catch (error) {
+    console.error('Social login error:', error.message);
+
+    if (
+      error.message.includes('verified email') ||
+      error.message.includes('did not provide an email') ||
+      error.message.includes('Unsupported social login provider') ||
+      error.message.includes('Provider and identity token')
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message.includes('configured on the backend')) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(401).json({ error: 'Social login failed' });
   }
 });
 

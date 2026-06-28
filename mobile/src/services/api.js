@@ -136,6 +136,41 @@ export const loginUser = async (email, password) => {
   }
 };
 
+export const loginWithSocialProvider = async ({
+  provider,
+  idToken,
+  email = null,
+  fullName = null,
+  marketingOptIn = false
+}) => {
+  try {
+    logApiRequest('post', '/auth/social', { provider, email });
+    const response = await apiClient.post('/auth/social', {
+      provider,
+      idToken,
+      email,
+      fullName,
+      marketingOptIn
+    });
+
+    await SecureStorage.saveToken(response.data.token);
+    await SecureStorage.saveUser(response.data.user);
+    await addTokenToHeaders();
+
+    return {
+      success: true,
+      user: response.data.user,
+      token: response.data.token
+    };
+  } catch (error) {
+    logApiFailure('post', '/auth/social', error);
+    return {
+      success: false,
+      error: formatApiError(error, `Unable to sign in with ${provider || 'social login'}`)
+    };
+  }
+};
+
 /**
  * Get current authenticated user
  */

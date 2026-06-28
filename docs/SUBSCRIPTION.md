@@ -132,6 +132,8 @@ Important App Store details:
 Make sure Agreements, Tax, and Banking is complete or Apple will block subscription readiness.
 If you want to submit quickly, skip annual and skip intro offer for now unless you already know the pricing.
 Apple often wants the subscription to be attached and metadata complete before review.
+
+
 Google Play Console
 Then create the matching Android subscription.
 

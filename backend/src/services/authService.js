@@ -5,12 +5,47 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
+import appleSigninAuth from 'apple-signin-auth';
 import { getSupabaseClient, getSupabaseDebugInfo } from './databaseService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d';
+const googleAudienceList = [
+  process.env.GOOGLE_IOS_CLIENT_ID,
+  process.env.GOOGLE_ANDROID_CLIENT_ID,
+  process.env.GOOGLE_WEB_CLIENT_ID
+].filter(Boolean);
+const appleAudienceList = String(process.env.APPLE_OAUTH_BUNDLE_IDS || 'com.emmaline.app,com.emmaline.app.dev')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const googleOAuthClient = new OAuth2Client();
 
 const getSupabase = () => getSupabaseClient();
+
+const buildUsernameBase = (email, fullName = null) => {
+  const fromName = String(fullName || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const fromEmail = String(email || '').split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+  return fromName || fromEmail || 'user';
+};
+
+const buildUniqueUsername = (email, fullName = null) => {
+  return `${buildUsernameBase(email, fullName)}_${Date.now().toString().slice(-6)}`;
+};
+
+const createRandomPasswordHash = async () => {
+  return bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
+};
+
+const normalizeAppUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  marketingOptIn: Boolean(user.marketing_opt_in),
+  pricingTier: 'tier1'
+});
 
 /**
  * Generate JWT token for a user
@@ -109,8 +144,7 @@ export const registerUser = async (email, password, consentOptions = {}) => {
 
   // Hash password
   const passwordHash = await bcrypt.hash(password, 10);
-  const emailPrefix = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() || 'user';
-  const username = `${emailPrefix}_${Date.now().toString().slice(-6)}`;
+  const username = buildUniqueUsername(email);
   const nowIso = new Date().toISOString();
 
   // Create user in database
@@ -137,12 +171,7 @@ export const registerUser = async (email, password, consentOptions = {}) => {
   const token = generateToken(newUser.id, newUser.email);
 
   return {
-    user: {
-      id: newUser.id,
-      email: newUser.email,
-      marketingOptIn: Boolean(newUser.marketing_opt_in),
-      pricingTier: 'tier1'
-    },
+    user: normalizeAppUser(newUser),
     token
   };
 };
@@ -180,12 +209,125 @@ export const loginUser = async (email, password) => {
   const token = generateToken(user.id, user.email);
 
   return {
-    user: {
-      id: user.id,
-      email: user.email,
-      marketingOptIn: Boolean(user.marketing_opt_in),
-      pricingTier: 'tier1'
-    },
+    user: normalizeAppUser(user),
+    token
+  };
+};
+
+const findUserByEmail = async (email) => {
+  const supabase = getSupabase();
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load user: ${error.message}`);
+  }
+
+  return user || null;
+};
+
+const createSocialUser = async ({ email, fullName = null, marketingOptIn = false }) => {
+  const supabase = getSupabase();
+  const nowIso = new Date().toISOString();
+  const passwordHash = await createRandomPasswordHash();
+
+  const { data: newUser, error } = await supabase
+    .from('users')
+    .insert({
+      email,
+      username: buildUniqueUsername(email, fullName),
+      password_hash: passwordHash,
+      marketing_opt_in: Boolean(marketingOptIn),
+      created_at: nowIso,
+      term_and_privacy_accepted_at: nowIso,
+      marketing_consent_at: marketingOptIn ? nowIso : null
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create social user: ${error.message}`);
+  }
+
+  return newUser;
+};
+
+const verifyGoogleIdentityToken = async (idToken) => {
+  if (!googleAudienceList.length) {
+    throw new Error('Google sign-in is not configured on the backend');
+  }
+
+  const ticket = await googleOAuthClient.verifyIdToken({
+    idToken,
+    audience: googleAudienceList
+  });
+  const payload = ticket.getPayload();
+
+  if (!payload?.email || payload.email_verified === false) {
+    throw new Error('Google account did not provide a verified email');
+  }
+
+  return {
+    email: payload.email,
+    fullName: payload.name || null
+  };
+};
+
+const verifyAppleIdentityToken = async (idToken, fallbackEmail = null, fallbackFullName = null) => {
+  const claims = await appleSigninAuth.verifyIdToken(idToken, {
+    audience: appleAudienceList,
+    ignoreExpiration: false
+  });
+  const email = claims?.email || fallbackEmail;
+
+  if (!email) {
+    throw new Error('Apple sign-in did not provide an email address for this account');
+  }
+
+  return {
+    email,
+    fullName: fallbackFullName
+  };
+};
+
+export const loginWithSocialProvider = async ({
+  provider,
+  idToken,
+  email = null,
+  fullName = null,
+  marketingOptIn = false
+}) => {
+  if (!provider || !idToken) {
+    throw new Error('Provider and identity token are required');
+  }
+
+  let identity;
+
+  if (provider === 'google') {
+    identity = await verifyGoogleIdentityToken(idToken);
+  } else if (provider === 'apple') {
+    identity = await verifyAppleIdentityToken(idToken, email, fullName);
+  } else {
+    throw new Error('Unsupported social login provider');
+  }
+
+  let user = await findUserByEmail(identity.email);
+
+  if (!user) {
+    user = await createSocialUser({
+      email: identity.email,
+      fullName: identity.fullName || fullName,
+      marketingOptIn
+    });
+  }
+
+  const token = generateToken(user.id, user.email);
+
+  return {
+    user: normalizeAppUser(user),
     token
   };
 };
@@ -227,6 +369,7 @@ export default {
   verifyToken,
   registerUser,
   loginUser,
+  loginWithSocialProvider,
   getUserById,
   refreshToken
 };

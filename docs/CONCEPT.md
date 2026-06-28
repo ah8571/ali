@@ -2,7 +2,11 @@
 
 ## Overview
 
-Emmaline is a hands-free, voice-first AI assistant for real-time conversations, instant answers, and note-friendly thinking out loud. The first version centers on the in-app voice experience, with future room to expand into calling and texting capabilities when those channels are ready to be productized.
+App Name: Emmaline: Your AI Assistant
+
+Emmaline can transcribe, take notes, read document, teach you a language
+
+Emmaline is a hands-free, voice-first AI assistant for real-time conversations, instant answers, note taking, transcriptions, reading documents out loud with more features to come. The first version centers on the in-app voice experience, with future room to expand into calling and texting capabilities when those channels are ready to be productized.
 
 
 
@@ -152,6 +156,8 @@ On iOS: You must show the App Tracking Transparency (ATT) prompt. If the user cl
 ---
 ## Later concepts
 
+changing interior to 'voice mode' rather than an actual phone so that interior can be used internationally without being an expense
+
 multilingual versions depending on country
 
 Viral design (ex. Coconote) ie building interesting features that are interesting visibly in potential demonstrations
@@ -178,6 +184,8 @@ Lawyer specialization
 Ex. Eve - handling a lot of review work, document drafting and intake
 Slides/ documentation creation:
 Ex. Genspark
+
+perhaps can expand to allow people under 18 to use once privacy policy is updated re COPA compliance
 
 ## Phase 2: OpenClaw Integration + Enhanced Privacy
 

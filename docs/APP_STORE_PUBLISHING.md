@@ -41,7 +41,7 @@
 - [ ] minimum of two screenshots showing, though recommended 3+ for reviewers: iPhone / Android screenshots for required sizes; iPhone (Mandatory Base): 6.9-inch (e.g., iPhone 16 Pro Max): 1320 x 2868 px (Portrait); Android: General Rule (Phones): Minimum Dimension: 320 px; Maximum Dimension: 3840 px; Aspect Ratio: Must not exceed 2:1 (e.g., 9:16 portrait or 16:9 landscape)
 - [ ] iPhone / Android screenshots for required sizes; screenshot specifications:
    1. "Apple App Store (App Store Connect) Apple requires you to submit specific mandatory device sizes. The store will automatically scale these to fit other compatible devices if exact sizes are not uploaded. You can upload up to 10 screenshots per device category.
-   - iPhone (Mandatory Base):6.9-inch (e.g., iPhone 16 Pro Max): 1320 x 2868 px (Portrait) or 2868 x 1320 px (Landscape)
+   - iPhone (Mandatory Base):6.9-inch (e.g., iPhone 16 Pro Max): 1320 x 2868 px (Portrait) or 2868 x 1320 px (Landscape) [note Apple may list a 6.5" display but it can be changed for a 6.9" Display]
    - iPad (Mandatory Base):13-inch (e.g., iPad Pro M4/M5): 2064 x 2752 px (Portrait) or 2752 x 2064 px (Landscape)
    - Apple Watch: Series 10/Ultra: 422 x 514 px
    - Apple TV: 1920 x 1080 px or 3840 x 2160 px

@@ -52,7 +52,6 @@ const AppContent = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLaunchSplash, setShowLaunchSplash] = useState(true);
-  const [showCallModePicker, setShowCallModePicker] = useState(false);
   const [listenModeState, setListenModeState] = useState('idle');
 
   const colors = isDarkMode ? darkColors : lightColors;
@@ -112,7 +111,6 @@ const AppContent = () => {
     setAudioDevices([]);
     setSelectedAudioDevice(null);
     setIsMuted(false);
-    setShowCallModePicker(false);
     setListenModeState('idle');
 
     endVoiceCall().catch(() => {
@@ -265,7 +263,7 @@ const AppContent = () => {
       return;
     }
 
-    setShowCallModePicker(true);
+    await handleStartListenMode();
   };
 
   const handleStartListenMode = async () => {
@@ -312,17 +310,6 @@ const AppContent = () => {
     setTimeout(() => {
       setListenModeState('idle');
     }, 2200);
-  };
-
-  const handleSelectCallMode = async (mode) => {
-    setShowCallModePicker(false);
-
-    if (mode === 'live_call') {
-      await startLiveCall();
-      return;
-    }
-
-    await handleStartListenMode();
   };
 
   const handleSelectAudioRoute = async (deviceUuid) => {
@@ -435,35 +422,6 @@ const AppContent = () => {
           />
         ) : null}
 
-        {showCallModePicker ? (
-          <View style={styles.modePickerOverlay}>
-            <TouchableOpacity style={styles.modePickerBackdrop} activeOpacity={1} onPress={() => setShowCallModePicker(false)} />
-            <View style={[styles.modePickerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-              <Text style={[styles.modePickerTitle, { color: colors.text }]}>Choose a mode</Text>
-              <Text style={[styles.modePickerSubtitle, { color: colors.mutedText }]}>Start a live assistant call now, or prepare for the quieter listen-and-summarize flow.</Text>
-
-              <TouchableOpacity
-                style={[styles.modePickerOption, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                onPress={() => handleSelectCallMode('live_call')}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.modePickerOptionTitle, { color: colors.text }]}>Live Call</Text>
-                <Text style={[styles.modePickerOptionDescription, { color: colors.mutedText }]}>Talk with Emmaline in real time and save the transcript, summary, and notes.</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modePickerOption, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                onPress={() => handleSelectCallMode('listen_mode')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.modePickerOptionHeader}>
-                  <Text style={[styles.modePickerOptionTitle, { color: colors.text }]}>Listen Mode</Text>
-                </View>
-                <Text style={[styles.modePickerOptionDescription, { color: colors.mutedText }]}>Record, transcribe, and summarize a conversation without the live assistant voice loop.</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
       </View>
     </AppThemeProvider>
   );

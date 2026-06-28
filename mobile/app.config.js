@@ -20,8 +20,17 @@ module.exports = () => {
     plugins.splice(1, 0, 'expo-dev-client');
   }
 
+  if (!plugins.includes('expo-web-browser')) {
+    plugins.push('expo-web-browser');
+  }
+
+  if (!plugins.includes('expo-apple-authentication')) {
+    plugins.push('expo-apple-authentication');
+  }
+
   const config = {
     ...baseConfig,
+    scheme: baseConfig.scheme || 'emmaline',
     plugins,
     ios: {
       ...(baseConfig.ios || {}),
@@ -29,6 +38,15 @@ module.exports = () => {
     },
     android: {
       ...(baseConfig.android || {}),
+      blockedPermissions: [
+        ...new Set([
+          ...((baseConfig.android && Array.isArray(baseConfig.android.blockedPermissions))
+            ? baseConfig.android.blockedPermissions
+            : []),
+          'android.permission.USE_FULL_SCREEN_INTENT',
+          'android.permission.FOREGROUND_SERVICE_MICROPHONE'
+        ])
+      ],
       package: isProduction ? productionBundleId : developmentBundleId
     },
     extra: {
