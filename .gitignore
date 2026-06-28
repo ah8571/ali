@@ -43,8 +43,8 @@ coverage/
 node_modules/
 .gradle
 .m2repository
-android/
-ios/
+/android/
+/ios/
 .watchman-cookie
 .eas-inspect*/
 mobile/.eas-inspect*/

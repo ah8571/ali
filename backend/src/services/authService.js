@@ -1,29 +1,12 @@
 /**
  * Authentication service
- * Handles user registration, login, and JWT token generation
+ * Uses Supabase Auth for sessions and the public users table for app profile data.
  */
 
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { OAuth2Client } from 'google-auth-library';
-import appleSigninAuth from 'apple-signin-auth';
-import { getSupabaseClient, getSupabaseDebugInfo } from './databaseService.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d';
-const googleAudienceList = [
-  process.env.GOOGLE_IOS_CLIENT_ID,
-  process.env.GOOGLE_ANDROID_CLIENT_ID,
-  process.env.GOOGLE_WEB_CLIENT_ID
-].filter(Boolean);
-const appleAudienceList = String(process.env.APPLE_OAUTH_BUNDLE_IDS || 'com.emmaline.app,com.emmaline.app.dev')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
-const googleOAuthClient = new OAuth2Client();
+import { getSupabaseAuthClient, getSupabaseClient, getSupabaseDebugInfo } from './databaseService.js';
 
 const getSupabase = () => getSupabaseClient();
+const getSupabaseAuth = () => getSupabaseAuthClient();
 
 const buildUsernameBase = (email, fullName = null) => {
   const fromName = String(fullName || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -36,10 +19,6 @@ const buildUniqueUsername = (email, fullName = null) => {
   return `${buildUsernameBase(email, fullName)}_${Date.now().toString().slice(-6)}`;
 };
 
-const createRandomPasswordHash = async () => {
-  return bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
-};
-
 const normalizeAppUser = (user) => ({
   id: user.id,
   email: user.email,
@@ -47,179 +26,21 @@ const normalizeAppUser = (user) => ({
   pricingTier: 'tier1'
 });
 
-/**
- * Generate JWT token for a user
- */
-export const generateToken = (userId, email) => {
-  return jwt.sign(
-    {
-      userId,
-      email,
-      iat: Math.floor(Date.now() / 1000)
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRATION }
-  );
-};
-
-/**
- * Verify JWT token
- */
-export const verifyToken = (token) => {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch (error) {
-    throw new Error(`Invalid token: ${error.message}`);
-  }
-};
-
-/**
- * Register a new user
- */
-export const registerUser = async (email, password, consentOptions = {}) => {
-  const supabase = getSupabase();
-  const supabaseDebug = getSupabaseDebugInfo();
-  const {
-    marketingOptIn = false,
-    termsAccepted = false,
-    privacyAccepted = false
-  } = consentOptions;
-
-  // Validate input
-  if (!email || !password) {
-    throw new Error('Email and password are required');
-  }
-
-  if (password.length < 8) {
-    throw new Error('Password must be at least 8 characters long');
-  }
-
-  if (!termsAccepted || !privacyAccepted) {
-    throw new Error('Terms of Use and Privacy Policy acceptance are required');
-  }
-
-  // Check if user already exists
-  let existingUser;
-  let existingUserError;
-
-  try {
-    ({ data: existingUser, error: existingUserError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle());
-  } catch (error) {
-    console.error('Supabase existing-user lookup threw before response', {
-      message: error.message,
-      cause: error.cause?.message || null,
-      supabase: {
-        configured: supabaseDebug.configured,
-        host: supabaseDebug.host,
-        normalizedRestSuffix: supabaseDebug.normalizedRestSuffix,
-        normalizedUrl: supabaseDebug.normalizedUrl
-      }
-    });
-    throw new Error(`Failed to check existing user: ${error.message} (supabase host: ${supabaseDebug.host})`);
-  }
-
-  if (existingUserError) {
-    console.error('Supabase existing-user lookup returned an error response', {
-      message: existingUserError.message,
-      code: existingUserError.code || null,
-      details: existingUserError.details || null,
-      hint: existingUserError.hint || null,
-      supabase: {
-        configured: supabaseDebug.configured,
-        host: supabaseDebug.host,
-        normalizedRestSuffix: supabaseDebug.normalizedRestSuffix,
-        normalizedUrl: supabaseDebug.normalizedUrl
-      }
-    });
-    throw new Error(`Failed to check existing user: ${existingUserError.message}`);
-  }
-
-  if (existingUser) {
-    throw new Error('Email already registered');
-  }
-
-  // Hash password
-  const passwordHash = await bcrypt.hash(password, 10);
-  const username = buildUniqueUsername(email);
-  const nowIso = new Date().toISOString();
-
-  // Create user in database
-  const { data: newUser, error } = await supabase
-    .from('users')
-    .insert({
-      email,
-      username,
-      password_hash: passwordHash,
-      marketing_opt_in: Boolean(marketingOptIn),
-      created_at: nowIso,
-      term_and_privacy_accepted_at: nowIso,
-      marketing_consent_at: marketingOptIn ? nowIso : null
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error registering user:', error);
-    throw new Error(`Failed to register user: ${error.message}`);
-  }
-
-  // Generate token
-  const token = generateToken(newUser.id, newUser.email);
+const getIdentityFromAuthUser = (authUser = {}, fallbackProfile = {}) => {
+  const metadata = authUser.user_metadata || {};
 
   return {
-    user: normalizeAppUser(newUser),
-    token
+    email: authUser.email || fallbackProfile.email || null,
+    fullName: fallbackProfile.fullName || metadata.full_name || metadata.name || null
   };
 };
 
-/**
- * Login user
- */
-export const loginUser = async (email, password) => {
-  const supabase = getSupabase();
-
-  // Validate input
-  if (!email || !password) {
-    throw new Error('Email and password are required');
-  }
-
-  // Find user
-  const { data: user, error: fetchError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-
-  if (fetchError || !user) {
-    throw new Error('Invalid email or password');
-  }
-
-  // Verify password
-  const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-  if (!passwordMatch) {
-    throw new Error('Invalid email or password');
-  }
-
-  // Generate token
-  const token = generateToken(user.id, user.email);
-
-  return {
-    user: normalizeAppUser(user),
-    token
-  };
-};
-
-const findUserByEmail = async (email) => {
+const getUserByIdInternal = async (userId) => {
   const supabase = getSupabase();
   const { data: user, error } = await supabase
     .from('users')
     .select('*')
-    .eq('email', email)
+    .eq('id', userId)
     .maybeSingle();
 
   if (error) {
@@ -229,19 +50,27 @@ const findUserByEmail = async (email) => {
   return user || null;
 };
 
-const createSocialUser = async ({ email, fullName = null, marketingOptIn = false }) => {
+const createUserProfile = async ({ authUser, identity, marketingOptIn = false, termsAccepted = false, privacyAccepted = false }) => {
+  if (!identity.email) {
+    throw new Error('Authenticated user is missing an email address');
+  }
+
+  if (!termsAccepted || !privacyAccepted) {
+    throw new Error('Terms of Use and Privacy Policy acceptance are required');
+  }
+
   const supabase = getSupabase();
   const nowIso = new Date().toISOString();
-  const passwordHash = await createRandomPasswordHash();
 
   const { data: newUser, error } = await supabase
     .from('users')
     .insert({
-      email,
-      username: buildUniqueUsername(email, fullName),
-      password_hash: passwordHash,
+      id: authUser.id,
+      email: identity.email,
+      username: buildUniqueUsername(identity.email, identity.fullName),
       marketing_opt_in: Boolean(marketingOptIn),
       created_at: nowIso,
+      updated_at: nowIso,
       term_and_privacy_accepted_at: nowIso,
       marketing_consent_at: marketingOptIn ? nowIso : null
     })
@@ -249,102 +78,80 @@ const createSocialUser = async ({ email, fullName = null, marketingOptIn = false
     .single();
 
   if (error) {
-    throw new Error(`Failed to create social user: ${error.message}`);
+    throw new Error(`Failed to create user profile: ${error.message}`);
   }
 
   return newUser;
 };
 
-const verifyGoogleIdentityToken = async (idToken) => {
-  if (!googleAudienceList.length) {
-    throw new Error('Google sign-in is not configured on the backend');
+export const getAuthUserForAccessToken = async (accessToken) => {
+  const supabase = getSupabaseAuth();
+  const { data, error } = await supabase.auth.getUser(accessToken);
+
+  if (error || !data?.user) {
+    throw new Error(error?.message || 'Invalid authentication token');
   }
 
-  const ticket = await googleOAuthClient.verifyIdToken({
-    idToken,
-    audience: googleAudienceList
-  });
-  const payload = ticket.getPayload();
-
-  if (!payload?.email || payload.email_verified === false) {
-    throw new Error('Google account did not provide a verified email');
-  }
-
-  return {
-    email: payload.email,
-    fullName: payload.name || null
-  };
+  return data.user;
 };
 
-const verifyAppleIdentityToken = async (idToken, fallbackEmail = null, fallbackFullName = null) => {
-  const claims = await appleSigninAuth.verifyIdToken(idToken, {
-    audience: appleAudienceList,
-    ignoreExpiration: false
-  });
-  const email = claims?.email || fallbackEmail;
-
-  if (!email) {
-    throw new Error('Apple sign-in did not provide an email address for this account');
-  }
-
-  return {
-    email,
-    fullName: fallbackFullName
-  };
-};
-
-export const loginWithSocialProvider = async ({
-  provider,
-  idToken,
+export const syncAuthenticatedUserProfile = async ({
+  authUser,
+  marketingOptIn,
+  termsAccepted = false,
+  privacyAccepted = false,
   email = null,
-  fullName = null,
-  marketingOptIn = false
+  fullName = null
 }) => {
-  if (!provider || !idToken) {
-    throw new Error('Provider and identity token are required');
+  if (!authUser?.id) {
+    throw new Error('Authenticated user is required');
   }
 
-  let identity;
-
-  if (provider === 'google') {
-    identity = await verifyGoogleIdentityToken(idToken);
-  } else if (provider === 'apple') {
-    identity = await verifyAppleIdentityToken(idToken, email, fullName);
-  } else {
-    throw new Error('Unsupported social login provider');
-  }
-
-  let user = await findUserByEmail(identity.email);
+  const identity = getIdentityFromAuthUser(authUser, { email, fullName });
+  let user = await getUserByIdInternal(authUser.id);
 
   if (!user) {
-    user = await createSocialUser({
-      email: identity.email,
-      fullName: identity.fullName || fullName,
-      marketingOptIn
+    user = await createUserProfile({
+      authUser,
+      identity,
+      marketingOptIn,
+      termsAccepted,
+      privacyAccepted
     });
+  } else if (typeof marketingOptIn === 'boolean') {
+    const nextMarketingConsentAt = marketingOptIn
+      ? user.marketing_consent_at || new Date().toISOString()
+      : null;
+    const nextTermsAcceptedAt = (termsAccepted && privacyAccepted)
+      ? (user.term_and_privacy_accepted_at || new Date().toISOString())
+      : user.term_and_privacy_accepted_at;
+
+    const { data: updatedUser, error } = await getSupabase()
+      .from('users')
+      .update({
+        marketing_opt_in: marketingOptIn,
+        marketing_consent_at: nextMarketingConsentAt,
+        term_and_privacy_accepted_at: nextTermsAcceptedAt,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', authUser.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update user profile: ${error.message}`);
+    }
+
+    user = updatedUser;
   }
 
-  const token = generateToken(user.id, user.email);
-
-  return {
-    user: normalizeAppUser(user),
-    token
-  };
+  return normalizeAppUser(user);
 };
 
-/**
- * Get user by ID
- */
 export const getUserById = async (userId) => {
-  const supabase = getSupabase();
+  const user = await getUserByIdInternal(userId);
 
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('id, email, created_at, marketing_opt_in')
-    .eq('id', userId)
-    .single();
-
-  if (error || !user) {
+  if (!user) {
     throw new Error('User not found');
   }
 
@@ -357,19 +164,80 @@ export const getUserById = async (userId) => {
   };
 };
 
-/**
- * Refresh token (returns new token)
- */
-export const refreshToken = (decodedToken) => {
-  return generateToken(decodedToken.userId, decodedToken.email);
+export const signInWithPassword = async ({ email, password }) => {
+  const supabase = getSupabaseAuth();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error || !data?.session || !data?.user) {
+    throw new Error(error?.message || 'Invalid email or password');
+  }
+
+  return data;
 };
 
+export const signUpWithPassword = async ({ email, password }) => {
+  const supabase = getSupabaseAuth();
+  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  if (error || !data?.user) {
+    throw new Error(error?.message || 'Unable to create account');
+  }
+
+  if (data.session) {
+    return data;
+  }
+
+  return signInWithPassword({ email, password });
+};
+
+export const signInWithIdToken = async ({ provider, idToken }) => {
+  const supabase = getSupabaseAuth();
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider,
+    token: idToken
+  });
+
+  if (error || !data?.session || !data?.user) {
+    throw new Error(error?.message || `Unable to sign in with ${provider}`);
+  }
+
+  return data;
+};
+
+export const refreshSession = async (refreshToken) => {
+  if (!refreshToken) {
+    throw new Error('Refresh token is required');
+  }
+
+  const supabase = getSupabaseAuth();
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+  if (error || !data?.session) {
+    throw new Error(error?.message || 'Unable to refresh session');
+  }
+
+  return data.session;
+};
+
+export const deleteAuthUser = async (userId) => {
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+
+  if (error) {
+    throw new Error(`Failed to delete auth user: ${error.message}`);
+  }
+};
+
+export const getAuthDebugInfo = () => getSupabaseDebugInfo();
+
 export default {
-  generateToken,
-  verifyToken,
-  registerUser,
-  loginUser,
-  loginWithSocialProvider,
+  getAuthUserForAccessToken,
+  syncAuthenticatedUserProfile,
   getUserById,
-  refreshToken
+  signInWithPassword,
+  signUpWithPassword,
+  signInWithIdToken,
+  refreshSession,
+  deleteAuthUser,
+  getAuthDebugInfo
 };

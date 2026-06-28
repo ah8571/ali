@@ -1,172 +1,75 @@
 /**
- * Routes for authentication
- * Handles user registration, login, and token refresh
+ * Routes for authenticated user profile sync
+ * Supabase Auth is the session source of truth.
  */
 
 import express from 'express';
-import { registerUser, loginUser, loginWithSocialProvider, getUserById, refreshToken } from '../services/authService.js';
 import authMiddleware from '../middleware/auth.js';
+import { getUserById, refreshSession, syncAuthenticatedUserProfile } from '../services/authService.js';
 
 const router = express.Router();
 
-/**
- * POST /api/auth/register
- * Register a new user
- */
-router.post('/register', async (req, res) => {
+router.post('/profile/sync', authMiddleware, async (req, res) => {
   try {
     const {
-      email,
-      password,
-      marketingOptIn = false,
+      marketingOptIn,
       termsAccepted = false,
-      privacyAccepted = false
-    } = req.body;
+      privacyAccepted = false,
+      email = null,
+      fullName = null
+    } = req.body || {};
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    if (!termsAccepted || !privacyAccepted) {
-      return res.status(400).json({ error: 'You must accept the Terms of Use and Privacy Policy to create an account' });
-    }
-
-    const result = await registerUser(email, password, {
+    const user = await syncAuthenticatedUserProfile({
+      authUser: {
+        id: req.user.userId,
+        email: req.user.email,
+        user_metadata: {}
+      },
       marketingOptIn,
       termsAccepted,
-      privacyAccepted
-    });
-
-    return res.status(201).json({
-      message: 'User registered successfully',
-      user: result.user,
-      token: result.token
-    });
-  } catch (error) {
-    console.error('Registration error:', error.message);
-
-    if (error.message.includes('already registered')) {
-      return res.status(409).json({ error: error.message });
-    }
-
-    if (error.message.includes('at least 8 characters')) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (error.message.includes('Failed to register user') || error.message.includes('Failed to check existing user')) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-/**
- * POST /api/auth/login
- * Login user and return JWT token
- */
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    const result = await loginUser(email, password);
-
-    return res.status(200).json({
-      message: 'Login successful',
-      user: result.user,
-      token: result.token
-    });
-  } catch (error) {
-    console.error('Login error:', error.message);
-
-    if (error.message.includes('Invalid email or password')) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    return res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-router.post('/social', async (req, res) => {
-  try {
-    const {
-      provider,
-      idToken,
-      email = null,
-      fullName = null,
-      marketingOptIn = false
-    } = req.body;
-
-    if (!provider || !idToken) {
-      return res.status(400).json({ error: 'Provider and identity token are required' });
-    }
-
-    const result = await loginWithSocialProvider({
-      provider,
-      idToken,
+      privacyAccepted,
       email,
-      fullName,
-      marketingOptIn
+      fullName
     });
 
-    return res.status(200).json({
-      message: 'Social login successful',
-      user: result.user,
-      token: result.token
-    });
+    return res.status(200).json({ user });
   } catch (error) {
-    console.error('Social login error:', error.message);
+    console.error('Profile sync error:', error.message);
 
-    if (
-      error.message.includes('verified email') ||
-      error.message.includes('did not provide an email') ||
-      error.message.includes('Unsupported social login provider') ||
-      error.message.includes('Provider and identity token')
-    ) {
+    if (error.message.includes('Terms of Use and Privacy Policy acceptance are required')) {
       return res.status(400).json({ error: error.message });
     }
 
-    if (error.message.includes('configured on the backend')) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.status(401).json({ error: 'Social login failed' });
+    return res.status(500).json({ error: 'Failed to sync user profile' });
   }
 });
 
-/**
- * POST /api/auth/refresh
- * Refresh JWT token
- */
-router.post('/refresh', authMiddleware, async (req, res) => {
+router.post('/refresh', async (req, res) => {
   try {
-    const newToken = refreshToken(req.user);
+    const { refreshToken } = req.body || {};
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    const session = await refreshSession(refreshToken);
 
     return res.status(200).json({
-      message: 'Token refreshed',
-      token: newToken
+      token: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: session.expires_at || null
     });
   } catch (error) {
     console.error('Token refresh error:', error.message);
-    return res.status(500).json({ error: 'Token refresh failed' });
+    return res.status(401).json({ error: 'Token refresh failed' });
   }
 });
 
-/**
- * GET /api/auth/me
- * Get current authenticated user
- */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await getUserById(req.user.userId);
 
-    return res.status(200).json({
-      user
-    });
+    return res.status(200).json({ user });
   } catch (error) {
     console.error('Get user error:', error.message);
     return res.status(404).json({ error: 'User not found' });

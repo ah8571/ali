@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 
+import { deleteAuthUser } from './authService.js';
 import { getSupabaseClient } from './databaseService.js';
 
 let resendClient = null;
@@ -247,6 +248,8 @@ export const deleteUserAccount = async ({ userId }) => {
   if (error) {
     throw error;
   }
+
+  await deleteAuthUser(userId);
 
   return { success: true };
 };

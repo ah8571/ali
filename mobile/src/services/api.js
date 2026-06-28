@@ -5,6 +5,15 @@
 
 import axios from 'axios';
 import * as SecureStorage from '../utils/secureStorage.js';
+import {
+  getAccessToken,
+  getSession,
+  refreshSession as refreshSupabaseSession,
+  signInWithIdToken as signInWithSupabaseIdToken,
+  signInWithPassword as signInWithSupabasePassword,
+  signOut as signOutFromSupabase,
+  signUpWithPassword as signUpWithSupabasePassword
+} from './supabaseAuth.js';
 
 // Configuration
 const API_BASE_URL =
@@ -57,9 +66,11 @@ let apiClient = createClient();
  * Add token to request headers
  */
 const addTokenToHeaders = async () => {
-  const token = await SecureStorage.getToken();
+  const token = await getAccessToken();
   if (token) {
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    removeTokenFromHeaders();
   }
 };
 
@@ -81,27 +92,30 @@ export const registerUser = async (email, password, options = {}) => {
       privacyAccepted = false
     } = options;
 
-    logApiRequest('post', '/auth/register', { email, marketingOptIn });
-    const response = await apiClient.post('/auth/register', {
+    await signUpWithSupabasePassword({
       email,
-      password,
       marketingOptIn,
-      termsAccepted,
-      privacyAccepted
+      password
     });
 
-    // Save token and user info
-    await SecureStorage.saveToken(response.data.token);
-    await SecureStorage.saveUser(response.data.user);
     await addTokenToHeaders();
+    logApiRequest('post', '/auth/profile/sync', { email, marketingOptIn });
+    const response = await apiClient.post('/auth/profile/sync', {
+      marketingOptIn,
+      termsAccepted,
+      privacyAccepted,
+      email
+    });
+
+    await SecureStorage.saveUser(response.data.user);
 
     return {
       success: true,
       user: response.data.user,
-      token: response.data.token
+      token: await getAccessToken()
     };
   } catch (error) {
-    logApiFailure('post', '/auth/register', error);
+    logApiFailure('post', '/auth/profile/sync', error);
     return {
       success: false,
       error: formatApiError(error, 'Registration failed')
@@ -114,21 +128,19 @@ export const registerUser = async (email, password, options = {}) => {
  */
 export const loginUser = async (email, password) => {
   try {
-    logApiRequest('post', '/auth/login', { email });
-    const response = await apiClient.post('/auth/login', { email, password });
-
-    // Save token and user info
-    await SecureStorage.saveToken(response.data.token);
-    await SecureStorage.saveUser(response.data.user);
+    await signInWithSupabasePassword({ email, password });
     await addTokenToHeaders();
+    const response = await apiClient.get('/auth/me');
+
+    await SecureStorage.saveUser(response.data.user);
 
     return {
       success: true,
       user: response.data.user,
-      token: response.data.token
+      token: await getAccessToken()
     };
   } catch (error) {
-    logApiFailure('post', '/auth/login', error);
+    logApiFailure('get', '/auth/me', error);
     return {
       success: false,
       error: formatApiError(error, 'Login failed')
@@ -141,29 +153,35 @@ export const loginWithSocialProvider = async ({
   idToken,
   email = null,
   fullName = null,
-  marketingOptIn = false
+  marketingOptIn = false,
+  termsAccepted = false,
+  privacyAccepted = false
 }) => {
   try {
-    logApiRequest('post', '/auth/social', { provider, email });
-    const response = await apiClient.post('/auth/social', {
+    await signInWithSupabaseIdToken({
       provider,
-      idToken,
-      email,
-      fullName,
-      marketingOptIn
+      idToken
     });
 
-    await SecureStorage.saveToken(response.data.token);
-    await SecureStorage.saveUser(response.data.user);
     await addTokenToHeaders();
+    logApiRequest('post', '/auth/profile/sync', { provider, email });
+    const response = await apiClient.post('/auth/profile/sync', {
+      marketingOptIn,
+      termsAccepted,
+      privacyAccepted,
+      email,
+      fullName
+    });
+
+    await SecureStorage.saveUser(response.data.user);
 
     return {
       success: true,
       user: response.data.user,
-      token: response.data.token
+      token: await getAccessToken()
     };
   } catch (error) {
-    logApiFailure('post', '/auth/social', error);
+    logApiFailure('post', '/auth/profile/sync', error);
     return {
       success: false,
       error: formatApiError(error, `Unable to sign in with ${provider || 'social login'}`)
@@ -177,7 +195,17 @@ export const loginWithSocialProvider = async ({
 export const getCurrentUser = async () => {
   try {
     await addTokenToHeaders();
+    const session = await getSession();
+
+    if (!session) {
+      return {
+        success: false,
+        error: 'No authenticated session found'
+      };
+    }
+
     const response = await apiClient.get('/auth/me');
+    await SecureStorage.saveUser(response.data.user);
 
     return {
       success: true,
@@ -196,16 +224,12 @@ export const getCurrentUser = async () => {
  */
 export const refreshAuthToken = async () => {
   try {
-    await addTokenToHeaders();
-    const response = await apiClient.post('/auth/refresh');
-
-    // Update stored token
-    await SecureStorage.saveToken(response.data.token);
+    await refreshSupabaseSession();
     await addTokenToHeaders();
 
     return {
       success: true,
-      token: response.data.token
+      token: await getAccessToken()
     };
   } catch (error) {
     return {
@@ -220,6 +244,7 @@ export const refreshAuthToken = async () => {
  */
 export const logoutUser = async () => {
   try {
+    await signOutFromSupabase();
     await SecureStorage.logout();
     removeTokenFromHeaders();
 
@@ -371,7 +396,7 @@ export const getBillingStatus = async () => {
 
 export const importReaderDocument = async (fileAsset) => {
   try {
-    const token = await SecureStorage.getToken();
+    const token = await getAccessToken();
 
     if (!token) {
       return {
@@ -411,7 +436,7 @@ export const importReaderDocument = async (fileAsset) => {
 
 export const uploadListenModeRecording = async (recordingAsset, languagePreference = 'en') => {
   try {
-    const token = await SecureStorage.getToken();
+    const token = await getAccessToken();
 
     if (!token) {
       return {
@@ -680,15 +705,15 @@ export const createNoteFromCall = async (callId, title = null) => {
  */
 export const initializeAPIClient = async () => {
   try {
-    const isAuth = await SecureStorage.isAuthenticated();
-    if (isAuth) {
+    const session = await getSession();
+    if (session) {
       await addTokenToHeaders();
-      // Verify token is still valid
       const result = await getCurrentUser();
       if (!result.success) {
-        // Token invalid, try refreshing
         await refreshAuthToken();
       }
+    } else {
+      removeTokenFromHeaders();
     }
     return true;
   } catch (error) {

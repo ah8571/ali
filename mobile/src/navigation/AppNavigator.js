@@ -15,10 +15,11 @@ import SettingsScreen from '../screens/SettingsScreen';
 import UpgradeScreen from '../screens/UpgradeScreen';
 import LegalDocumentScreen from '../screens/LegalDocumentScreen';
 import SupportScreen from '../screens/SupportScreen';
-import { isAuthenticated as hasAuthToken, getUser, logout as clearStoredAuth } from '../utils/secureStorage.js';
+import { getUser, logout as clearStoredAuth } from '../utils/secureStorage.js';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
 import { getCurrentUser, logoutUser } from '../services/api.js';
+import { hasSession, initializeSupabaseAuth, onAuthStateChange as subscribeToSupabaseAuthState } from '../services/supabaseAuth.js';
 import { syncRevenueCatUser } from '../services/revenueCatService.js';
 
 const Stack = createStackNavigator();
@@ -315,9 +316,11 @@ const AppNavigator = ({ onAuthStateChange }) => {
   };
 
   useEffect(() => {
+    const disposeSupabaseAuth = initializeSupabaseAuth();
+
     const checkAuthStatus = async () => {
       try {
-        const authenticated = await hasAuthToken();
+        const authenticated = await hasSession();
 
         if (!authenticated) {
           Sentry.setUser(null);
@@ -366,6 +369,49 @@ const AppNavigator = ({ onAuthStateChange }) => {
     };
 
     checkAuthStatus();
+
+    const {
+      data: { subscription }
+    } = subscribeToSupabaseAuthState(async (_event, session) => {
+      if (!session) {
+        Sentry.setUser(null);
+        await syncRevenueCatUser(null);
+        setIsAuthenticated(false);
+        setUser(null);
+        onAuthStateChange?.(false);
+        return;
+      }
+
+      const currentUserResponse = await getCurrentUser();
+      if (!currentUserResponse.success || !currentUserResponse.user) {
+        await clearStoredAuth();
+        Sentry.setUser(null);
+        await syncRevenueCatUser(null);
+        setIsAuthenticated(false);
+        setUser(null);
+        onAuthStateChange?.(false);
+        return;
+      }
+
+      const nextUser = currentUserResponse.user || await getUser();
+      Sentry.setUser(
+        nextUser?.id
+          ? {
+              id: String(nextUser.id),
+              email: nextUser.email || undefined
+            }
+          : null
+      );
+      await syncRevenueCatUser(nextUser?.id ? String(nextUser.id) : null);
+      setUser(nextUser);
+      setIsAuthenticated(true);
+      onAuthStateChange?.(true);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      disposeSupabaseAuth?.();
+    };
   }, [onAuthStateChange]);
 
   const handleLoginSuccess = (userData) => {

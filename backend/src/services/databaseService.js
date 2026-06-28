@@ -15,7 +15,8 @@ const normalizeSupabaseUrl = (value) => {
 };
 
 const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 const getSupabaseHost = () => {
   try {
@@ -26,15 +27,16 @@ const getSupabaseHost = () => {
 };
 
 let supabase = null;
+let supabaseAuth = null;
 
 // Initialize Supabase only if credentials are provided
-if (supabaseUrl && supabaseKey) {
+if (supabaseUrl && supabaseServiceRoleKey) {
   try {
     if (process.env.SUPABASE_URL !== supabaseUrl) {
       console.warn('SUPABASE_URL included /rest/v1; normalizing to project root URL for Supabase client');
     }
 
-    supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     console.log('✓ Supabase client initialized');
   } catch (error) {
     console.error('Failed to initialize Supabase:', error.message);
@@ -44,6 +46,24 @@ if (supabaseUrl && supabaseKey) {
   console.warn('⚠ Supabase not configured - database features disabled');
 }
 
+if (supabaseUrl && supabaseAnonKey) {
+  try {
+    supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
+    });
+    console.log('✓ Supabase auth client initialized');
+  } catch (error) {
+    console.error('Failed to initialize Supabase auth client:', error.message);
+    supabaseAuth = null;
+  }
+} else {
+  console.warn('⚠ Supabase auth client not configured - missing SUPABASE_URL or SUPABASE_ANON_KEY');
+}
+
 export const getSupabaseClient = () => {
   if (!supabase) {
     throw new Error('Supabase client not initialized. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
@@ -51,8 +71,16 @@ export const getSupabaseClient = () => {
   return supabase;
 };
 
+export const getSupabaseAuthClient = () => {
+  if (!supabaseAuth) {
+    throw new Error('Supabase auth client not initialized. Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+  }
+  return supabaseAuth;
+};
+
 export const getSupabaseDebugInfo = () => ({
-  configured: Boolean(supabaseUrl && supabaseKey),
+  configured: Boolean(supabaseUrl && supabaseServiceRoleKey),
+  authConfigured: Boolean(supabaseUrl && supabaseAnonKey),
   originalUrl: String(process.env.SUPABASE_URL || ''),
   normalizedUrl: supabaseUrl,
   host: getSupabaseHost(),

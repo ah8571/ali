@@ -1,28 +1,24 @@
 /**
  * Authentication middleware
- * Verifies JWT token and attaches user info to request
+ * Verifies Supabase access tokens and attaches user info to request.
  */
 
-import { verifyToken } from '../services/authService.js';
+import { getAuthUserForAccessToken } from '../services/authService.js';
 
-export const authMiddleware = (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid authorization header' });
     }
 
-    const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+    const token = authHeader.slice(7);
+    const user = await getAuthUserForAccessToken(token);
 
-    // Verify token
-    const decoded = verifyToken(token);
-
-    // Attach user info to request
     req.user = {
-      userId: decoded.userId,
-      email: decoded.email
+      userId: user.id,
+      email: user.email || null
     };
 
     next();
@@ -35,17 +31,17 @@ export const authMiddleware = (req, res, next) => {
 /**
  * Optional auth middleware - doesn't fail if no token provided
  */
-export const optionalAuth = (req, res, next) => {
+export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      const decoded = verifyToken(token);
+      const user = await getAuthUserForAccessToken(token);
 
       req.user = {
-        userId: decoded.userId,
-        email: decoded.email
+        userId: user.id,
+        email: user.email || null
       };
     }
 
