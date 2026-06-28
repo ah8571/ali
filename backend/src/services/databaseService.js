@@ -16,7 +16,7 @@ const normalizeSupabaseUrl = (value) => {
 
 const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
 const getSupabaseHost = () => {
   try {
@@ -61,7 +61,7 @@ if (supabaseUrl && supabaseAnonKey) {
     supabaseAuth = null;
   }
 } else {
-  console.warn('⚠ Supabase auth client not configured - missing SUPABASE_URL or SUPABASE_ANON_KEY');
+  console.warn('⚠ Supabase auth client not configured - missing SUPABASE_URL and/or SUPABASE_ANON_KEY (or legacy SUPABASE_KEY)');
 }
 
 export const getSupabaseClient = () => {
@@ -73,7 +73,7 @@ export const getSupabaseClient = () => {
 
 export const getSupabaseAuthClient = () => {
   if (!supabaseAuth) {
-    throw new Error('Supabase auth client not initialized. Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+    throw new Error('Supabase auth client not initialized. Missing SUPABASE_URL and/or SUPABASE_ANON_KEY (or legacy SUPABASE_KEY)');
   }
   return supabaseAuth;
 };
@@ -82,6 +82,7 @@ export const getSupabaseDebugInfo = () => ({
   configured: Boolean(supabaseUrl && supabaseServiceRoleKey),
   authConfigured: Boolean(supabaseUrl && supabaseAnonKey),
   originalUrl: String(process.env.SUPABASE_URL || ''),
+  authKeySource: process.env.SUPABASE_ANON_KEY ? 'SUPABASE_ANON_KEY' : (process.env.SUPABASE_KEY ? 'SUPABASE_KEY' : 'missing'),
   normalizedUrl: supabaseUrl,
   host: getSupabaseHost(),
   normalizedRestSuffix: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_URL !== supabaseUrl)
