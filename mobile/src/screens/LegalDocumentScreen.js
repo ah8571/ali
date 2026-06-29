@@ -1,5 +1,7 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import legalContent from '../content/legalContent.json';
 import { useAppTheme } from '../theme/appTheme.js';
@@ -25,7 +27,9 @@ const renderSection = (section, colors) => {
 
 const LegalDocumentScreen = ({ documentKey = 'privacyPolicy' }) => {
   const { colors } = useAppTheme();
+  const navigation = useNavigation();
   const document = legalContent[documentKey];
+  const canGoBack = navigation.canGoBack();
 
   if (!document) {
     return (
@@ -37,6 +41,19 @@ const LegalDocumentScreen = ({ documentKey = 'privacyPolicy' }) => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
+      {canGoBack ? (
+        <TouchableOpacity
+          style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={18} color={colors.text} />
+          <Text style={[styles.backButtonText, { color: colors.text }]}>Back</Text>
+        </TouchableOpacity>
+      ) : null}
+
       <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
         <Text style={[styles.eyebrow, { color: colors.mutedText }]}>Emmaline legal</Text>
         <Text style={[styles.title, { color: colors.text }]}>{document.title}</Text>
@@ -62,6 +79,21 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 16
+  },
+  backButton: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: '700'
   },
   heroCard: {
     borderWidth: 1,

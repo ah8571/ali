@@ -23,7 +23,7 @@ router.post('/profile/sync', authMiddleware, async (req, res) => {
       authUser: {
         id: req.user.userId,
         email: req.user.email,
-        user_metadata: {}
+        user_metadata: req.user.userMetadata || {}
       },
       marketingOptIn,
       termsAccepted,

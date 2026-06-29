@@ -47,6 +47,53 @@ const logApiFailure = (method, path, error) => {
   });
 };
 
+const isMissingProfileError = (error) => {
+  return error?.response?.status === 404 && error?.response?.data?.error === 'User not found';
+};
+
+const syncUserProfile = async ({
+  marketingOptIn,
+  termsAccepted,
+  privacyAccepted,
+  email,
+  fullName
+} = {}) => {
+  const payload = {};
+
+  if (typeof marketingOptIn === 'boolean') {
+    payload.marketingOptIn = marketingOptIn;
+  }
+
+  if (typeof termsAccepted === 'boolean') {
+    payload.termsAccepted = termsAccepted;
+  }
+
+  if (typeof privacyAccepted === 'boolean') {
+    payload.privacyAccepted = privacyAccepted;
+  }
+
+  if (email) {
+    payload.email = email;
+  }
+
+  if (fullName) {
+    payload.fullName = fullName;
+  }
+
+  logApiRequest('post', '/auth/profile/sync', payload);
+  const response = await apiClient.post('/auth/profile/sync', payload);
+  await SecureStorage.saveUser(response.data.user);
+
+  return response.data.user;
+};
+
+const fetchCurrentUserProfile = async () => {
+  const response = await apiClient.get('/auth/me');
+  await SecureStorage.saveUser(response.data.user);
+
+  return response.data.user;
+};
+
 /**
  * Create axios instance with default config
  */
@@ -95,23 +142,22 @@ export const registerUser = async (email, password, options = {}) => {
     await signUpWithSupabasePassword({
       email,
       marketingOptIn,
-      password
+      password,
+      termsAccepted,
+      privacyAccepted
     });
 
     await addTokenToHeaders();
-    logApiRequest('post', '/auth/profile/sync', { email, marketingOptIn });
-    const response = await apiClient.post('/auth/profile/sync', {
+    const user = await syncUserProfile({
       marketingOptIn,
       termsAccepted,
       privacyAccepted,
       email
     });
 
-    await SecureStorage.saveUser(response.data.user);
-
     return {
       success: true,
-      user: response.data.user,
+      user,
       token: await getAccessToken()
     };
   } catch (error) {
@@ -130,13 +176,21 @@ export const loginUser = async (email, password) => {
   try {
     await signInWithSupabasePassword({ email, password });
     await addTokenToHeaders();
-    const response = await apiClient.get('/auth/me');
+    let user;
 
-    await SecureStorage.saveUser(response.data.user);
+    try {
+      user = await fetchCurrentUserProfile();
+    } catch (error) {
+      if (!isMissingProfileError(error)) {
+        throw error;
+      }
+
+      user = await syncUserProfile({ email });
+    }
 
     return {
       success: true,
-      user: response.data.user,
+      user,
       token: await getAccessToken()
     };
   } catch (error) {
@@ -204,12 +258,21 @@ export const getCurrentUser = async () => {
       };
     }
 
-    const response = await apiClient.get('/auth/me');
-    await SecureStorage.saveUser(response.data.user);
+    let user;
+
+    try {
+      user = await fetchCurrentUserProfile();
+    } catch (error) {
+      if (!isMissingProfileError(error)) {
+        throw error;
+      }
+
+      user = await syncUserProfile({ email: session.user?.email || null });
+    }
 
     return {
       success: true,
-      user: response.data.user
+      user
     };
   } catch (error) {
     return {

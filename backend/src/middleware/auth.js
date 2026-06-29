@@ -18,7 +18,8 @@ export const authMiddleware = async (req, res, next) => {
 
     req.user = {
       userId: user.id,
-      email: user.email || null
+      email: user.email || null,
+      userMetadata: user.user_metadata || {}
     };
 
     next();
@@ -41,7 +42,8 @@ export const optionalAuth = async (req, res, next) => {
 
       req.user = {
         userId: user.id,
-        email: user.email || null
+        email: user.email || null,
+        userMetadata: user.user_metadata || {}
       };
     }
 

@@ -606,6 +606,8 @@ const CreateNoteScreen = ({ route, navigation, onAppHeaderScroll, notesResetToke
           placeholderTextColor={colors.mutedText}
           value={title}
           onChangeText={setTitle}
+          multiline
+          scrollEnabled={false}
           blurOnSubmit={false}
           onBlur={() => {
             if (!pendingEditorFocusRef.current) {
@@ -621,13 +623,22 @@ const CreateNoteScreen = ({ route, navigation, onAppHeaderScroll, notesResetToke
 
         <Pressable
           style={[styles.editorShell, { borderTopColor: colors.border }]}
+          pointerEvents={editorFocused ? 'box-none' : 'auto'}
           onPress={() => {
+            if (editorFocused) {
+              return;
+            }
+
             pendingEditorFocusRef.current = true;
             requestAnimationFrame(() => {
               richTextRef.current?.focusContentEditor?.();
             });
           }}
           onPressIn={() => {
+            if (editorFocused) {
+              return;
+            }
+
             pendingEditorFocusRef.current = true;
           }}
         >
@@ -785,7 +796,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingTop: 4,
     paddingBottom: 8,
-    borderBottomWidth: 0
+    borderBottomWidth: 0,
+    textAlignVertical: 'top'
   },
   editorShell: {
     paddingTop: 4

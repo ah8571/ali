@@ -3,7 +3,7 @@
     "name": "Emmaline",
     "slug": "emmaline",
     "version": "0.1.0",
-    "icon": "./assets/app-icon-padded.png",
+    "icon": "./assets/app-icon.png",
     "newArchEnabled": false,
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
       "**/*"
     ],
     "ios": {
-      "icon": "./assets/app-icon-padded.png",
+      "icon": "./assets/app-icon.png",
       "supportsTablet": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Emmaline needs microphone access so you can talk to your AI assistant during in-app calls.",

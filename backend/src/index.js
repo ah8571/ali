@@ -29,6 +29,7 @@ import { errorHandler, requestLogger } from './middleware/index.js';
 import { handleMediaStreamWebSocket } from './websocket/mediaStreamHandler.js';
 import { handleEchoWebSocket } from './websocket/echoHandler.js';
 import { getGoogleCloudConfigStatus } from './services/googleCloudAuth.js';
+import { getSupabaseDebugInfo } from './services/databaseService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -159,6 +160,7 @@ app.use(errorHandler);
 // Start server
 server.listen(PORT, () => {
   const googleCloudStatus = getGoogleCloudConfigStatus();
+  const supabaseDebug = getSupabaseDebugInfo();
 
   console.log(`🚀 Emmaline backend running on port ${PORT}`);
   websocketRoutes.forEach(({ path }) => {
@@ -166,7 +168,8 @@ server.listen(PORT, () => {
   });
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Twilio account configured: ${process.env.TWILIO_ACCOUNT_SID ? '✓' : '✗'}`);
-  console.log(`Supabase configured: ${process.env.SUPABASE_URL ? '✓' : '✗'}`);
+  console.log(`Supabase DB client configured: ${supabaseDebug.configured ? '✓' : '✗'}`);
+  console.log(`Supabase auth client configured: ${supabaseDebug.authConfigured ? '✓' : '✗'}`);
   console.log(`OpenAI configured: ${process.env.OPENAI_API_KEY ? '✓' : '✗'}`);
   console.log(`Google Cloud project configured: ${googleCloudStatus.hasProjectId ? '✓' : '✗'}`);
   console.log(`Google Cloud credentials configured: ${googleCloudStatus.hasCredentials ? '✓' : '✗'}`);

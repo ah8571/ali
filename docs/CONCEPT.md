@@ -35,6 +35,7 @@ Emmaline is a hands-free, voice-first AI assistant for real-time conversations, 
 - conversations with AI
 - read documents -> create summaries, perhaps even for discussion or flash cards of the material
 - study skill (ex. coconote production capabilities with take a source material (say a video but perhaps could be several types), creating a "transcript, summary, flashcards, quizzes" [yuma on medium])
+- set a timer [can hover over the screen] / set an alarm
 - language teacher 
 - receptionist set up (ie an AI voice assistant for small businesses - but how would we set up infrastructure for this if people are also texting... could receive messages like 2nd number)
 - document creator like with genspark

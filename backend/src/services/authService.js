@@ -7,6 +7,7 @@ import { getSupabaseAuthClient, getSupabaseClient, getSupabaseDebugInfo } from '
 
 const getSupabase = () => getSupabaseClient();
 const getSupabaseAuth = () => getSupabaseAuthClient();
+const LEGACY_SUPABASE_PASSWORD_PLACEHOLDER = 'supabase_auth_managed';
 
 const buildUsernameBase = (email, fullName = null) => {
   const fromName = String(fullName || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -30,8 +31,28 @@ const getIdentityFromAuthUser = (authUser = {}, fallbackProfile = {}) => {
   const metadata = authUser.user_metadata || {};
 
   return {
-    email: authUser.email || fallbackProfile.email || null,
+    email: authUser.email || metadata.email || fallbackProfile.email || null,
     fullName: fallbackProfile.fullName || metadata.full_name || metadata.name || null
+  };
+};
+
+const getConsentStateFromAuthUser = (authUser = {}) => {
+  const metadata = authUser.user_metadata || {};
+  const acceptedAt = metadata.term_and_privacy_accepted_at
+    || metadata.terms_accepted_at
+    || null;
+  const privacyAcceptedAt = metadata.privacy_accepted_at || acceptedAt;
+  const marketingConsentAt = metadata.marketing_consent_at || null;
+  const marketingOptIn = typeof metadata.marketing_opt_in === 'boolean'
+    ? metadata.marketing_opt_in
+    : null;
+
+  return {
+    termsAccepted: Boolean(acceptedAt),
+    privacyAccepted: Boolean(privacyAcceptedAt || acceptedAt),
+    acceptedAt,
+    marketingOptIn,
+    marketingConsentAt
   };
 };
 
@@ -50,7 +71,15 @@ const getUserByIdInternal = async (userId) => {
   return user || null;
 };
 
-const createUserProfile = async ({ authUser, identity, marketingOptIn = false, termsAccepted = false, privacyAccepted = false }) => {
+const createUserProfile = async ({
+  authUser,
+  identity,
+  marketingOptIn = false,
+  termsAccepted = false,
+  privacyAccepted = false,
+  acceptedAt = null,
+  marketingConsentAt = null
+}) => {
   if (!identity.email) {
     throw new Error('Authenticated user is missing an email address');
   }
@@ -61,6 +90,8 @@ const createUserProfile = async ({ authUser, identity, marketingOptIn = false, t
 
   const supabase = getSupabase();
   const nowIso = new Date().toISOString();
+  const consentAcceptedAt = acceptedAt || nowIso;
+  const nextMarketingConsentAt = marketingOptIn ? (marketingConsentAt || nowIso) : null;
 
   const { data: newUser, error } = await supabase
     .from('users')
@@ -68,11 +99,12 @@ const createUserProfile = async ({ authUser, identity, marketingOptIn = false, t
       id: authUser.id,
       email: identity.email,
       username: buildUniqueUsername(identity.email, identity.fullName),
+      password_hash: LEGACY_SUPABASE_PASSWORD_PLACEHOLDER,
       marketing_opt_in: Boolean(marketingOptIn),
       created_at: nowIso,
       updated_at: nowIso,
-      term_and_privacy_accepted_at: nowIso,
-      marketing_consent_at: marketingOptIn ? nowIso : null
+      term_and_privacy_accepted_at: consentAcceptedAt,
+      marketing_consent_at: nextMarketingConsentAt
     })
     .select()
     .single();
@@ -108,28 +140,36 @@ export const syncAuthenticatedUserProfile = async ({
   }
 
   const identity = getIdentityFromAuthUser(authUser, { email, fullName });
+  const metadataConsent = getConsentStateFromAuthUser(authUser);
+  const effectiveMarketingOptIn = typeof marketingOptIn === 'boolean'
+    ? marketingOptIn
+    : Boolean(metadataConsent.marketingOptIn);
+  const effectiveTermsAccepted = Boolean(termsAccepted || metadataConsent.termsAccepted);
+  const effectivePrivacyAccepted = Boolean(privacyAccepted || metadataConsent.privacyAccepted);
   let user = await getUserByIdInternal(authUser.id);
 
   if (!user) {
     user = await createUserProfile({
       authUser,
       identity,
-      marketingOptIn,
-      termsAccepted,
-      privacyAccepted
+      marketingOptIn: effectiveMarketingOptIn,
+      termsAccepted: effectiveTermsAccepted,
+      privacyAccepted: effectivePrivacyAccepted,
+      acceptedAt: metadataConsent.acceptedAt,
+      marketingConsentAt: metadataConsent.marketingConsentAt
     });
   } else if (typeof marketingOptIn === 'boolean') {
-    const nextMarketingConsentAt = marketingOptIn
-      ? user.marketing_consent_at || new Date().toISOString()
+    const nextMarketingConsentAt = effectiveMarketingOptIn
+      ? user.marketing_consent_at || metadataConsent.marketingConsentAt || new Date().toISOString()
       : null;
-    const nextTermsAcceptedAt = (termsAccepted && privacyAccepted)
-      ? (user.term_and_privacy_accepted_at || new Date().toISOString())
+    const nextTermsAcceptedAt = (effectiveTermsAccepted && effectivePrivacyAccepted)
+      ? (user.term_and_privacy_accepted_at || metadataConsent.acceptedAt || new Date().toISOString())
       : user.term_and_privacy_accepted_at;
 
     const { data: updatedUser, error } = await getSupabase()
       .from('users')
       .update({
-        marketing_opt_in: marketingOptIn,
+        marketing_opt_in: effectiveMarketingOptIn,
         marketing_consent_at: nextMarketingConsentAt,
         term_and_privacy_accepted_at: nextTermsAcceptedAt,
         updated_at: new Date().toISOString()

@@ -90,8 +90,30 @@ export const hasSession = async () => {
   return Boolean(await getSession());
 };
 
-export const signUpWithPassword = async ({ email, password }) => {
-  const { data, error } = await getClient().auth.signUp({ email, password });
+export const signUpWithPassword = async ({
+  email,
+  password,
+  marketingOptIn = false,
+  termsAccepted = false,
+  privacyAccepted = false
+}) => {
+  const consentAcceptedAt = (termsAccepted && privacyAccepted)
+    ? new Date().toISOString()
+    : null;
+
+  const { data, error } = await getClient().auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        marketing_opt_in: Boolean(marketingOptIn),
+        marketing_consent_at: marketingOptIn ? new Date().toISOString() : null,
+        term_and_privacy_accepted_at: consentAcceptedAt,
+        terms_accepted_at: consentAcceptedAt,
+        privacy_accepted_at: consentAcceptedAt
+      }
+    }
+  });
 
   if (error) {
     throw error;

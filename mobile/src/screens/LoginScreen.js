@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  ScrollView,
   View,
   StyleSheet,
   Text,
@@ -156,8 +157,15 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Emmaline</Text>
           <Text style={styles.subtitle}>Voice Assistant</Text>
@@ -231,42 +239,48 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
 
           {!isLogin ? (
             <View style={styles.consentGroup}>
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setAcceptedRequiredTerms((current) => !current)}
-                activeOpacity={0.85}
-                disabled={loading}
-              >
-                <View style={[styles.checkbox, acceptedRequiredTerms && styles.checkboxChecked]}>
-                  {acceptedRequiredTerms ? <Ionicons name="checkmark" size={14} color="#050607" /> : null}
-                </View>
-                <Text style={styles.checkboxText}>
-                  I agree to the{' '}
+              <View style={styles.consentItem}>
+                <TouchableOpacity
+                  style={styles.checkboxRow}
+                  onPress={() => setAcceptedRequiredTerms((current) => !current)}
+                  activeOpacity={0.85}
+                  disabled={loading}
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                >
+                  <View style={[styles.checkbox, acceptedRequiredTerms && styles.checkboxChecked]}>
+                    {acceptedRequiredTerms ? <Ionicons name="checkmark" size={16} color="#050607" /> : null}
+                  </View>
+                  <Text style={styles.checkboxText}>
+                    I agree to the Terms of Use and Privacy Policy.
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.inlineLinksRow}>
                   <Text
                     style={styles.inlineLinkText}
                     onPress={() => navigation.navigate('TermsOfService')}
                   >
                     Terms of Use
                   </Text>
-                  {' '}and{' '}
+                  <Text style={styles.inlineLinkDivider}>•</Text>
                   <Text
                     style={styles.inlineLinkText}
                     onPress={() => navigation.navigate('PrivacyPolicy')}
                   >
                     Privacy Policy
                   </Text>
-                  .
-                </Text>
-              </TouchableOpacity>
+                </View>
+              </View>
 
               <TouchableOpacity
                 style={styles.checkboxRow}
                 onPress={() => setMarketingOptIn((current) => !current)}
                 activeOpacity={0.85}
                 disabled={loading}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
               >
                 <View style={[styles.checkbox, marketingOptIn && styles.checkboxChecked]}>
-                  {marketingOptIn ? <Ionicons name="checkmark" size={14} color="#050607" /> : null}
+                  {marketingOptIn ? <Ionicons name="checkmark" size={16} color="#050607" /> : null}
                 </View>
                 <Text style={styles.checkboxText}>[optional] I would like to receive an educational newsletter and product updates from Emmaline.</Text>
               </TouchableOpacity>
@@ -310,7 +324,7 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
           <Text style={styles.footerText}>Hands-free AI assistant for multitasking</Text>
           <Text style={styles.footerSubtext}>Call, talk, and organize your thoughts</Text>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -320,11 +334,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#050607'
   },
+  scrollView: {
+    flex: 1
+  },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 40
+    paddingTop: 40,
+    paddingBottom: 56
   },
   header: {
     alignItems: 'center',
@@ -425,18 +443,22 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 4
   },
+  consentItem: {
+    gap: 8
+  },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12
+    gap: 12,
+    minHeight: 44,
+    paddingVertical: 4
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#f5f7fa',
-    marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -446,8 +468,19 @@ const styles = StyleSheet.create({
   checkboxText: {
     flex: 1,
     color: '#d6dbe1',
-    fontSize: 12,
-    lineHeight: 18
+    fontSize: 13,
+    lineHeight: 20,
+    paddingTop: 1
+  },
+  inlineLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 36
+  },
+  inlineLinkDivider: {
+    color: '#8f98a3',
+    fontSize: 12
   },
   inlineLinkText: {
     color: '#f5f7fa',
@@ -483,7 +516,8 @@ const styles = StyleSheet.create({
     marginTop: 12
   },
   footer: {
-    alignItems: 'center'
+    alignItems: 'center',
+    marginTop: 24
   },
   footerText: {
     fontSize: 16,
