@@ -4,6 +4,7 @@ import Purchases, { LOG_LEVEL, PURCHASES_ERROR_CODE } from 'react-native-purchas
 const IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY || '';
 const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY || '';
 const PRO_ENTITLEMENT_ID = 'pro';
+const PRO_PRODUCT_IDS = ['emmaline_pro_monthly'];
 
 let isConfigured = false;
 let currentAppUserId = null;
@@ -38,6 +39,22 @@ const getApiKey = () => {
 
 export const isRevenueCatEnabled = () => {
   return Boolean(getApiKey());
+};
+
+const hasActiveProEntitlement = (customerInfo) => {
+  return Boolean(customerInfo?.entitlements?.active?.[PRO_ENTITLEMENT_ID]);
+};
+
+const hasActiveProProduct = (customerInfo) => {
+  const activeSubscriptions = Array.isArray(customerInfo?.activeSubscriptions)
+    ? customerInfo.activeSubscriptions
+    : [];
+
+  return PRO_PRODUCT_IDS.some((productId) => activeSubscriptions.includes(productId));
+};
+
+const hasActiveProAccess = (customerInfo) => {
+  return hasActiveProEntitlement(customerInfo) || hasActiveProProduct(customerInfo);
 };
 
 export const getRevenueCatSetupMessage = () => {
@@ -96,7 +113,7 @@ export const initializeRevenueCat = async (appUserId = null) => {
     return {
       success: true,
       customerInfo,
-      isProActive: Boolean(customerInfo?.entitlements?.active?.[PRO_ENTITLEMENT_ID])
+      isProActive: hasActiveProAccess(customerInfo)
     };
   } catch (error) {
     return {
@@ -114,7 +131,7 @@ export const syncRevenueCatUser = async (appUserId = null) => {
     return {
       success: true,
       customerInfo,
-      isProActive: Boolean(customerInfo?.entitlements?.active?.[PRO_ENTITLEMENT_ID])
+      isProActive: hasActiveProAccess(customerInfo)
     };
   } catch (error) {
     return {
@@ -145,7 +162,7 @@ export const restoreRevenueCatPurchases = async () => {
 };
 
 export const isProEntitlementActive = (customerInfo) => {
-  return Boolean(customerInfo?.entitlements?.active?.[PRO_ENTITLEMENT_ID]);
+  return hasActiveProAccess(customerInfo);
 };
 
 export const isRevenueCatUserCancelled = (error) => {

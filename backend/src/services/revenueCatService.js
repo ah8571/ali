@@ -1,6 +1,10 @@
 const REVENUECAT_V1_BASE_URL = 'https://api.revenuecat.com/v1';
 const REVENUECAT_V2_BASE_URL = 'https://api.revenuecat.com/v2';
 const PRO_ENTITLEMENT_ID = 'pro';
+const PRO_PRODUCT_IDS = String(process.env.REVENUECAT_PRO_PRODUCT_IDS || 'emmaline_pro_monthly')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 const REQUEST_TIMEOUT_MS = Number(process.env.REVENUECAT_REQUEST_TIMEOUT_MS || 4000);
 const CACHE_TTL_MS = Number(process.env.REVENUECAT_CACHE_TTL_MS || 60000);
 
@@ -142,16 +146,31 @@ const getRevenueCatStatusViaV1 = async (appUserId) => {
   const proEntitlement = data?.subscriber?.entitlements?.[PRO_ENTITLEMENT_ID] || null;
   const expiresAt = proEntitlement?.expires_date || null;
   const expiresAtMs = expiresAt ? Date.parse(expiresAt) : null;
-  const isProActive = Boolean(
+  const isActiveEntitlement = Boolean(
     proEntitlement && (expiresAtMs === null || Number.isNaN(expiresAtMs) || expiresAtMs > Date.now())
   );
+  const subscriptions = data?.subscriber?.subscriptions || {};
+  const activeSubscriptionProductId = PRO_PRODUCT_IDS.find((productId) => {
+    const subscription = subscriptions?.[productId];
+    const subscriptionExpiresAt = subscription?.expires_date || null;
+    const subscriptionExpiresAtMs = subscriptionExpiresAt ? Date.parse(subscriptionExpiresAt) : null;
+
+    return Boolean(
+      subscription && (
+        subscriptionExpiresAtMs === null ||
+        Number.isNaN(subscriptionExpiresAtMs) ||
+        subscriptionExpiresAtMs > Date.now()
+      )
+    );
+  }) || null;
+  const isProActive = isActiveEntitlement || Boolean(activeSubscriptionProductId);
 
   return createRevenueCatStatus({
     configured: true,
     source: 'api_v1',
     status: isProActive ? 'active' : 'inactive',
     isProActive,
-    expiresAt
+    expiresAt: expiresAt || subscriptions?.[activeSubscriptionProductId]?.expires_date || null
   });
 };
 
@@ -173,11 +192,19 @@ export const getRevenueCatProStatus = async (appUserId) => {
   try {
     const v2Status = await getRevenueCatStatusViaV2(appUserId);
 
-    if (v2Status) {
+    if (v2Status?.isProActive) {
       return setCachedStatus(appUserId, v2Status);
     }
 
     const v1Status = await getRevenueCatStatusViaV1(appUserId);
+
+    if (v1Status?.isProActive) {
+      return setCachedStatus(appUserId, v1Status);
+    }
+
+    if (v2Status) {
+      return setCachedStatus(appUserId, v2Status);
+    }
 
     if (v1Status) {
       return setCachedStatus(appUserId, v1Status);

@@ -10,8 +10,7 @@ import {
   isProEntitlementActive,
   isRevenueCatEnabled,
   isRevenueCatUserCancelled,
-  purchaseRevenueCatPackage,
-  restoreRevenueCatPurchases
+  purchaseRevenueCatPackage
 } from '../services/revenueCatService.js';
 import { getUser } from '../utils/secureStorage.js';
 import { useAppTheme } from '../theme/appTheme.js';
@@ -24,7 +23,6 @@ const UpgradeScreen = () => {
   const [offeringPackage, setOfferingPackage] = useState(null);
   const [offeringsLoading, setOfferingsLoading] = useState(true);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
-  const [restoreLoading, setRestoreLoading] = useState(false);
   const [revenueCatMessage, setRevenueCatMessage] = useState(null);
   const [isProActive, setIsProActive] = useState(false);
 
@@ -109,26 +107,6 @@ const UpgradeScreen = () => {
     }
   };
 
-  const handleRestorePress = async () => {
-    setRestoreLoading(true);
-
-    try {
-      const customerInfo = await restoreRevenueCatPurchases();
-      const proActive = isProEntitlementActive(customerInfo);
-      setIsProActive(proActive);
-      Alert.alert(
-        proActive ? 'Purchases restored' : 'Nothing to restore',
-        proActive
-          ? 'Your Emmaline Pro access has been restored for this account.'
-          : 'No active Emmaline Pro subscription was found for this store account.'
-      );
-    } catch (error) {
-      Alert.alert('Restore failed', error?.message || 'Unable to restore purchases right now.');
-    } finally {
-      setRestoreLoading(false);
-    }
-  };
-
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
       <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -139,10 +117,10 @@ const UpgradeScreen = () => {
         <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.heroEyebrow, { color: colors.accent }]}>Emmaline Pro</Text>
           <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {offeringPackage?.product?.priceString || '$9.99 / month'} after your first 5 free minutes
+            {offeringPackage?.product?.priceString || '$9.99'} per month after your first 5 free minutes
           </Text>
           <Text style={[styles.heroDescription, { color: colors.mutedText }]}>
-            Start with 5 free minutes to try the assistant. When the store configuration is ready, Emmaline Pro unlocks continued access through the App Store or Google Play.
+            Start with 5 free minutes to try the assistant, then continue with a monthly subscription.
           </Text>
 
           {revenueCatMessage ? (
@@ -151,7 +129,7 @@ const UpgradeScreen = () => {
 
           <View style={[styles.statusBadge, { backgroundColor: isProActive ? colors.chipSelectedBg : colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[styles.statusBadgeText, { color: isProActive ? colors.chipSelectedText : colors.mutedText }]}>
-              {isProActive ? 'Pro active on this account' : offeringsLoading ? 'Loading subscription details...' : 'Pro not active yet'}
+              {isProActive ? 'Pro active on this account' : offeringsLoading ? 'Loading subscription details...' : 'Upgrade available'}
             </Text>
           </View>
 
@@ -166,52 +144,35 @@ const UpgradeScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.restoreButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }, restoreLoading && styles.buttonDisabled]}
-            onPress={handleRestorePress}
-            disabled={restoreLoading || offeringsLoading}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.restoreButtonText, { color: colors.text }]}>
-              {restoreLoading ? 'Restoring purchases...' : 'Restore purchases'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.inlineBenefitsBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>What Pro unlocks</Text>
+
+            {[
+              'Continue using Emmaline after the free 5-minute trial is used.',
+              'Use live calls and Listen Mode with one simple monthly plan.',
+              'Keep access to ongoing voice features without juggling one-off top-ups.'
+            ].map((item) => (
+              <View key={item} style={styles.bulletRow}>
+                <Text style={[styles.bulletMark, { color: colors.text }]}>•</Text>
+                <Text style={[styles.bulletText, { color: colors.mutedText }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Current access</Text>
-        <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>Your current voice allowance based on the backend billing ledger.</Text>
 
         <View style={[styles.statusCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
           <Text style={[styles.statusLabel, { color: colors.mutedText }]}>Available minutes</Text>
           <Text style={[styles.statusValue, { color: colors.text }]}>
             {loading ? '...' : billing?.voiceAccessSource === 'subscription' ? 'Pro active' : billing ? billing.availableVoiceMinutes.toFixed(2) : 'Unavailable'}
           </Text>
-          <Text style={[styles.statusFootnote, { color: colors.mutedText }]}>
-            {loading
-              ? 'Trial minutes remaining: ...'
-              : billing?.voiceAccessSource === 'subscription'
-                ? 'Your RevenueCat pro entitlement is currently unlocking voice access.'
-                : `Trial minutes remaining: ${billing ? Math.ceil((billing.remainingFreeTrialSeconds || 0) / 60) : 'Unavailable'}`}
-          </Text>
+          {billing?.voiceAccessSource === 'subscription' ? (
+            <Text style={[styles.statusFootnote, { color: colors.mutedText }]}>Your subscription is currently unlocking voice access.</Text>
+          ) : null}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>What Pro unlocks</Text>
-        <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>Restore purchases and subscription management language will be added alongside the store billing rollout.</Text>
-
-        {[
-          'Keep talking after the free 5-minute trial is used.',
-          'Simple monthly access instead of manual minute tracking.',
-          'Restore purchases across reinstalls and supported devices.'
-        ].map((item) => (
-          <View key={item} style={styles.bulletRow}>
-            <Text style={[styles.bulletMark, { color: colors.text }]}>•</Text>
-            <Text style={[styles.bulletText, { color: colors.mutedText }]}>{item}</Text>
-          </View>
-        ))}
       </View>
     </ScrollView>
   );
@@ -262,6 +223,10 @@ const styles = StyleSheet.create({
     fontSize: designTokens.typography.body,
     lineHeight: 21
   },
+  inlineBenefitsBlock: {
+    gap: designTokens.spacing.sm,
+    marginTop: designTokens.spacing.xs
+  },
   upgradeButton: {
     minHeight: 54,
     borderRadius: designTokens.radius.md,
@@ -275,18 +240,6 @@ const styles = StyleSheet.create({
   upgradeButtonText: {
     fontSize: 16,
     fontWeight: '700'
-  },
-  restoreButton: {
-    minHeight: 48,
-    borderRadius: designTokens.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: designTokens.spacing.lg,
-    borderWidth: 1
-  },
-  restoreButtonText: {
-    fontSize: 15,
-    fontWeight: '600'
   },
   helperText: {
     fontSize: designTokens.typography.bodySmall,
