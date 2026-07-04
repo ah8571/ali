@@ -216,6 +216,12 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
     )
   );
 
+  const renderEmptyListState = () => (
+    <View style={styles.emptyListState}>
+      <Text style={[styles.emptyListText, { color: colors.mutedText }]}>Tap + to create your first note.</Text>
+    </View>
+  );
+
   const renderListHeader = () => (
     <>
       <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
@@ -300,14 +306,6 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
           <Text style={[styles.emptyText, { color: colors.text }]}>Unable to load notes</Text>
           <Text style={[styles.emptySubtext, { color: colors.mutedText }]}>{errorMessage}</Text>
         </View>
-      ) : notes.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={[styles.emptyText, { color: colors.text }]}>No notes yet</Text>
-          <Text style={[styles.emptySubtext, { color: colors.mutedText }]}>
-            Create a note or extract from a call
-          </Text>
-        </View>
       ) : (
         <SectionList
           sections={groupedNotes}
@@ -315,6 +313,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
           renderItem={renderNote}
           renderSectionHeader={renderSectionHeader}
           ListHeaderComponent={renderListHeader}
+          ListEmptyComponent={renderEmptyListState}
           contentContainerStyle={[styles.notesList, { paddingBottom: bottomContentInset + 24 }]}
           onScroll={handleListScroll}
           scrollEventThrottle={16}
@@ -417,6 +416,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: designTokens.spacing.xxxl
+  },
+  emptyListState: {
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.lg
+  },
+  emptyListText: {
+    fontSize: designTokens.typography.body,
+    textAlign: 'center'
   },
   emptyIcon: {
     fontSize: 48,

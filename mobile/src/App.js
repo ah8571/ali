@@ -605,7 +605,6 @@ const AppContent = () => {
               >
                 <View style={styles.modePickerOptionHeader}>
                   <Text style={[styles.modePickerOptionTitle, { color: colors.text }]}>Live Call</Text>
-                  <Text style={[styles.modePickerOptionHint, { color: colors.mutedText }]}>Speaker by default</Text>
                 </View>
                 <Text style={[styles.modePickerOptionDescription, { color: colors.mutedText }]}>Talk to Emmaline live with call controls and audio routing.</Text>
               </TouchableOpacity>
