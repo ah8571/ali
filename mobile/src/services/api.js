@@ -741,6 +741,11 @@ export const importReaderDocument = async (fileAsset) => {
       type: fileAsset.mimeType || 'application/octet-stream'
     });
 
+    logApiRequest('post', '/reader/extract', {
+      fileName: fileAsset.name || 'document',
+      mimeType: fileAsset.mimeType || 'application/octet-stream'
+    });
+
     const response = await axios.post(`${API_BASE_URL}/reader/extract`, formData, {
       timeout: REQUEST_TIMEOUT,
       headers: {
@@ -756,9 +761,76 @@ export const importReaderDocument = async (fileAsset) => {
       metadata: response.data.metadata || null
     };
   } catch (error) {
+    logApiFailure('post', '/reader/extract', error);
     return {
       success: false,
       error: formatApiError(error, 'Failed to import document')
+    };
+  }
+};
+
+export const generateReaderAudio = async ({ text, title, languagePreference = 'en', speechRate = 1 }) => {
+  try {
+    await addTokenToHeaders();
+    logApiRequest('post', '/reader/audio', {
+      title: title || null,
+      languagePreference,
+      speechRate,
+      characterCount: String(text || '').trim().length
+    });
+    const response = await apiClient.post('/reader/audio', {
+      text,
+      title,
+      languagePreference,
+      speechRate
+    });
+
+    return {
+      success: true,
+      fileName: response.data.fileName,
+      contentType: response.data.contentType,
+      audioBase64: response.data.audioBase64,
+      metadata: response.data.metadata || null
+    };
+  } catch (error) {
+    logApiFailure('post', '/reader/audio', error);
+    return {
+      success: false,
+      error: formatApiError(error, 'Failed to create reader audio')
+    };
+  }
+};
+
+export const saveReaderAudio = async ({ text, title, languagePreference = 'en', speechRate = 1 }) => {
+  try {
+    await addTokenToHeaders();
+    logApiRequest('post', '/reader/audio/save', {
+      title: title || null,
+      languagePreference,
+      speechRate,
+      characterCount: String(text || '').trim().length
+    });
+    const response = await apiClient.post('/reader/audio/save', {
+      text,
+      title,
+      languagePreference,
+      speechRate
+    });
+
+    return {
+      success: true,
+      savedAudioId: response.data.savedAudioId,
+      createdAt: response.data.createdAt,
+      fileName: response.data.fileName,
+      contentType: response.data.contentType,
+      audioBase64: response.data.audioBase64,
+      metadata: response.data.metadata || null
+    };
+  } catch (error) {
+    logApiFailure('post', '/reader/audio/save', error);
+    return {
+      success: false,
+      error: formatApiError(error, 'Failed to save reader audio')
     };
   }
 };

@@ -250,6 +250,33 @@ export const saveSummary = async (callId, userId, summaryData) => {
   return data[0];
 };
 
+export const saveReaderAudio = async (userId, readerAudio) => {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('reader_saved_audio')
+    .insert({
+      user_id: userId,
+      title: readerAudio.title,
+      source_text: readerAudio.sourceText,
+      file_name: readerAudio.fileName,
+      content_type: readerAudio.contentType,
+      audio_base64: readerAudio.audioBase64,
+      character_count: readerAudio.characterCount,
+      chunk_count: readerAudio.chunkCount,
+      language_code: readerAudio.languageCode,
+      metadata: readerAudio.metadata || {}
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving reader audio:', error);
+    throw error;
+  }
+
+  return data;
+};
+
 const attachRelatedCallRows = async (calls = [], options = {}) => {
   if (!Array.isArray(calls) || calls.length === 0) {
     return calls;
