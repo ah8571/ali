@@ -1,23 +1,54 @@
-import { Suspense } from 'react';
+const APP_CALLBACK_URL = 'emmaline://auth/callback';
 
-import AuthCallbackClient from './AuthCallbackClient';
+type SearchParams = Record<string, string | string[] | undefined>;
 
-function AuthCallbackFallback() {
+const buildAppRedirectUrl = (searchParams: SearchParams) => {
+  const nextUrl = new URL(APP_CALLBACK_URL);
+
+  Object.entries(searchParams || {}).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      const lastValue = value[value.length - 1];
+
+      if (lastValue) {
+        nextUrl.searchParams.set(key, lastValue);
+      }
+
+      return;
+    }
+
+    if (value) {
+      nextUrl.searchParams.set(key, value);
+    }
+  });
+
+  return nextUrl.toString();
+};
+
+export default function AuthCallbackPage({ searchParams }: { searchParams: SearchParams }) {
+  const appRedirectUrl = buildAppRedirectUrl(searchParams);
+  const redirectScript = `
+    window.location.replace(${JSON.stringify(appRedirectUrl)});
+    window.setTimeout(function () {
+      var manualOpen = document.getElementById('manual-open');
+      if (manualOpen) {
+        manualOpen.style.display = 'inline-flex';
+      }
+    }, 1500);
+  `;
+
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl shadow-black/40">
-        <p className="text-xs uppercase tracking-[0.3em] text-white/50">Emmaline</p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">Returning to the app</h1>
-        <p className="mt-3 text-sm leading-6 text-white/70">Completing your Google sign-in.</p>
-      </div>
+    <main className="min-h-screen bg-black flex items-center justify-center px-6">
+      <script dangerouslySetInnerHTML={{ __html: redirectScript }} />
+      <a
+        id="manual-open"
+        href={appRedirectUrl}
+        className="hidden min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-white/90"
+      >
+        Open Emmaline
+      </a>
+      <noscript>
+        <a href={appRedirectUrl}>Open Emmaline</a>
+      </noscript>
     </main>
-  );
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense fallback={<AuthCallbackFallback />}>
-      <AuthCallbackClient />
-    </Suspense>
   );
 }
