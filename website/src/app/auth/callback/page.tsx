@@ -27,9 +27,16 @@ const buildAppRedirectUrl = (searchParams: SearchParams) => {
 export default function AuthCallbackPage({ searchParams }: { searchParams: SearchParams }) {
   const appRedirectUrl = buildAppRedirectUrl(searchParams);
   const redirectScript = `
-    window.location.replace(${JSON.stringify(appRedirectUrl)});
+    var nextUrl = ${JSON.stringify(appRedirectUrl)};
+    if (window.location.hash) {
+      nextUrl += window.location.hash;
+    }
+    var manualOpen = document.getElementById('manual-open');
+    if (manualOpen) {
+      manualOpen.setAttribute('href', nextUrl);
+    }
+    window.location.replace(nextUrl);
     window.setTimeout(function () {
-      var manualOpen = document.getElementById('manual-open');
       if (manualOpen) {
         manualOpen.style.display = 'inline-flex';
       }
