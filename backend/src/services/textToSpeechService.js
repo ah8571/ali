@@ -1,7 +1,7 @@
 /**
  * Text-to-Speech Service
  * Converts text responses to audio using configurable providers.
- * Supported providers: google, openai, elevenlabs
+ * Supported providers: google, openai, elevenlabs, resemble
  */
 
 import textToSpeech from '@google-cloud/text-to-speech';
@@ -17,6 +17,10 @@ const OPENAI_TTS_MODEL = process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts';
 const OPENAI_TTS_VOICE = process.env.OPENAI_TTS_VOICE || 'alloy';
 const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb';
+const RESEMBLE_API_BASE_URL = process.env.RESEMBLE_API_BASE_URL || 'https://f.cluster.resemble.ai';
+const RESEMBLE_VOICE_UUID = process.env.RESEMBLE_VOICE_UUID || '';
+const RESEMBLE_PROJECT_UUID = process.env.RESEMBLE_PROJECT_UUID || '';
+const RESEMBLE_MODEL = process.env.RESEMBLE_MODEL || 'chatterbox-turbo';
 
 let ttsClient = null;
 let openaiClient = null;
@@ -129,6 +133,52 @@ const textToAudioElevenLabs = async (text, options = {}) => {
   return Buffer.from(response.data);
 };
 
+const textToAudioResemble = async (text, options = {}) => {
+  const apiKey = process.env.RESEMBLE_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Resemble API key missing. Set RESEMBLE_API_KEY');
+  }
+
+  const voiceUuid = options.voiceUuid || RESEMBLE_VOICE_UUID;
+
+  if (!voiceUuid) {
+    throw new Error('Resemble voice UUID missing. Set RESEMBLE_VOICE_UUID');
+  }
+
+  const response = await axios.post(
+    `${RESEMBLE_API_BASE_URL.replace(/\/$/, '')}/synthesize`,
+    {
+      voice_uuid: voiceUuid,
+      data: text,
+      ...(options.projectUuid || RESEMBLE_PROJECT_UUID ? { project_uuid: options.projectUuid || RESEMBLE_PROJECT_UUID } : {}),
+      ...(options.title ? { title: options.title } : {}),
+      model: options.model || RESEMBLE_MODEL,
+      output_format: options.outputFormat || 'mp3',
+      sample_rate: options.sampleRate || 48000,
+      ...(options.precision ? { precision: options.precision } : {}),
+      ...(options.useHd !== undefined ? { use_hd: Boolean(options.useHd) } : {}),
+      ...(options.applyCustomPronunciations !== undefined
+        ? { apply_custom_pronunciations: Boolean(options.applyCustomPronunciations) }
+        : {})
+    },
+    {
+      headers: {
+        Authorization: apiKey,
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip'
+      }
+    }
+  );
+
+  if (!response.data?.success || !response.data?.audio_content) {
+    const issueText = Array.isArray(response.data?.issues) ? response.data.issues.join(' ') : '';
+    throw new Error(issueText || 'Resemble did not return audio content.');
+  }
+
+  return Buffer.from(response.data.audio_content, 'base64');
+};
+
 /**
  * Convert text to speech audio
  * @param {string} text - The text to convert to speech
@@ -154,6 +204,8 @@ export const textToAudio = async (
       audioBuffer = await textToAudioOpenAI(text, options);
     } else if (provider === 'elevenlabs') {
       audioBuffer = await textToAudioElevenLabs(text, options);
+    } else if (provider === 'resemble') {
+      audioBuffer = await textToAudioResemble(text, options);
     } else {
       throw new Error(`Unsupported TTS provider: ${provider}`);
     }
@@ -223,6 +275,15 @@ export const getAvailableVoices = async (languageCode = 'en-US') => {
         category: voice.category,
         labels: voice.labels || {}
       }));
+    }
+
+    if (DEFAULT_PROVIDER === 'resemble') {
+      return [{
+        provider: 'resemble',
+        name: 'Configured Resemble voice',
+        voiceUuid: RESEMBLE_VOICE_UUID || null,
+        model: RESEMBLE_MODEL
+      }];
     }
 
     throw new Error(`Unsupported TTS provider: ${DEFAULT_PROVIDER}`);
