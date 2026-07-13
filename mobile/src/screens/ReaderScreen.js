@@ -480,7 +480,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     });
   }, []);
 
-  const playReadAloudFallbackAudio = useCallback(async ({ text, title, languagePreference, speechRate }) => {
+  const playReadAloudFallbackAudio = useCallback(async ({ text, title, provider = 'resemble', voiceProfile = null, languagePreference, speechRate }) => {
     setIsPreparingReadAloudFallback(true);
     logReaderTts('fallbackAudio:start', {
       languagePreference,
@@ -491,6 +491,8 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     const response = await generateReaderAudio({
       text,
       title,
+      provider,
+      voiceProfile,
       languagePreference,
       speechRate
     });
@@ -1448,8 +1450,8 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
           <Text style={[styles.helpText, { color: colors.mutedText }]}>
             {isPreparingReadAloudFallback
-              ? 'Preparing audio fallback for this device. Keep the app open for a few seconds.'
-              : 'Read aloud uses the device voice for speed. Save audio below to keep an MP3 on this screen, then download it whenever you want.'}
+              ? 'Preparing the selected voice audio. Keep the app open for a few seconds.'
+              : 'Read aloud now uses the selected voice. Save audio below to keep an MP3 on this screen, then download it whenever you want.'}
           </Text>
         </View>
       </ScrollView>
