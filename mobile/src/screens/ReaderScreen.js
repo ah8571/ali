@@ -34,6 +34,19 @@ const MIN_BODY_INPUT_HEIGHT = 280;
 const READER_AUDIO_DIRECTORY = `${FileSystem.documentDirectory}reader-audio`;
 const READER_AUDIO_INDEX_FILE = `${READER_AUDIO_DIRECTORY}/latest.json`;
 const READER_TTS_START_TIMEOUT_MS = 2500;
+const SAVED_READER_AUDIO_REFRESH_INTERVAL_MS = 8000;
+const READER_AUDIO_VOICE_OPTIONS = [
+  {
+    id: 'lucy',
+    label: 'Lucy',
+    provider: 'resemble'
+  },
+  {
+    id: 'ethan',
+    label: 'Ethan',
+    provider: 'resemble'
+  }
+];
 
 const logReaderTts = (step, details = null) => {
   if (details === null || details === undefined) {
@@ -270,6 +283,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
   const [isUpdatingSavedAudioId, setIsUpdatingSavedAudioId] = useState(null);
   const [loadedSavedAudioId, setLoadedSavedAudioId] = useState(null);
   const [playingSavedAudioId, setPlayingSavedAudioId] = useState(null);
+  const [selectedReaderVoiceId, setSelectedReaderVoiceId] = useState(READER_AUDIO_VOICE_OPTIONS[0].id);
   const [savedAudioPlaybackState, setSavedAudioPlaybackState] = useState({
     entryId: null,
     isPlaying: false,
@@ -285,27 +299,39 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
   const readAloudFallbackUriRef = useRef(null);
   const savedAudioSoundRef = useRef(null);
   const savedAudioSeekTrackWidthsRef = useRef({});
+  const savedAudioEntriesRef = useRef([]);
 
   const currentTextSignature = buildReaderTextSignature(documentTitle, readerText);
 
   useEffect(() => {
-    loadSavedReaderAudio()
-      .then((entries) => {
-        setSavedAudioEntries(entries);
+    savedAudioEntriesRef.current = savedAudioEntries;
+  }, [savedAudioEntries]);
 
-        return syncSavedReaderAudioFromBackend(entries)
-          .then((syncedEntries) => {
-            setSavedAudioEntries(syncedEntries);
-          })
-          .catch(() => {
-            // Fall back to local saved audio if backend hydration fails.
-          });
-      })
-      .catch(() => {
-        // Ignore best-effort hydration failures.
+  const refreshSavedAudioEntries = useCallback(async ({ hydrateLocal = false } = {}) => {
+    let existingEntries = savedAudioEntriesRef.current;
+
+    if (hydrateLocal) {
+      existingEntries = await loadSavedReaderAudio();
+      setSavedAudioEntries(existingEntries);
+    }
+
+    const syncedEntries = await syncSavedReaderAudioFromBackend(existingEntries);
+    setSavedAudioEntries(syncedEntries);
+  }, []);
+
+  useEffect(() => {
+    refreshSavedAudioEntries({ hydrateLocal: true }).catch((error) => {
+      console.error('Error loading saved reader audio:', error);
+    });
+
+    const refreshIntervalId = setInterval(() => {
+      refreshSavedAudioEntries().catch((error) => {
+        console.error('Error refreshing saved reader audio:', error);
       });
+    }, SAVED_READER_AUDIO_REFRESH_INTERVAL_MS);
 
     return () => {
+      clearInterval(refreshIntervalId);
       speechCancelledRef.current = true;
       const unloadReadAloudFallbackAudio = async () => {
         if (readAloudFallbackSoundRef.current) {
@@ -677,29 +703,33 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       getCallLanguagePreference(),
       getSpeechRatePreference()
     ]);
-    const speechLanguage = resolveSpeechLanguage(languagePreference);
     const speechRate = Math.max(0.75, Math.min(1.1, Number(savedSpeechRate) || 1));
-    const speechChunks = splitTextIntoSpeechChunks(normalizedText);
     const fallbackConfig = {
       text: normalizedText,
       title: documentTitle,
+      provider: 'resemble',
+      voiceProfile: selectedReaderVoiceId,
       languagePreference,
       speechRate
     };
 
     logReaderTts('handleReadAloud:prepared', {
       languagePreference,
-      speechLanguage,
       speechRate,
-      chunkCount: speechChunks.length
+      provider: fallbackConfig.provider,
+      voiceProfile: fallbackConfig.voiceProfile
     });
 
     speechCancelledRef.current = false;
-    speechChunksRef.current = speechChunks;
-    speechIndexRef.current = 0;
     setIsSpeaking(true);
-    speakNextChunk(speechLanguage, speechRate, fallbackConfig);
-  }, [documentTitle, readerText, speakNextChunk, stopReading]);
+    playReadAloudFallbackAudio(fallbackConfig).catch((error) => {
+      logReaderTts('handleReadAloud:resembleFailed', {
+        error: error?.message || String(error)
+      });
+      setIsSpeaking(false);
+      Alert.alert('Reader error', error?.message || 'Unable to play the selected voice right now.');
+    });
+  }, [documentTitle, playReadAloudFallbackAudio, readerText, selectedReaderVoiceId, stopReading]);
 
   const handleImportDocument = async () => {
     try {
@@ -758,6 +788,8 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       const response = await saveReaderAudio({
         text: normalizedText,
         title: documentTitle,
+        provider: 'resemble',
+        voiceProfile: selectedReaderVoiceId,
         languagePreference,
         speechRate
       });
@@ -784,7 +816,9 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
         createdAt: response.createdAt || new Date().toISOString(),
         textSignature: buildReaderTextSignature(documentTitle, readerText),
         characterCount: response.metadata?.characterCount || normalizedText.length,
-        languageCode: response.metadata?.languageCode || resolveSpeechLanguage(languagePreference)
+        languageCode: response.metadata?.languageCode || resolveSpeechLanguage(languagePreference),
+        provider: response.metadata?.provider || 'resemble',
+        voiceProfile: response.metadata?.voiceProfile || selectedReaderVoiceId
       };
 
       const nextSavedAudioEntries = normalizeSavedReaderAudioEntries([nextSavedAudioEntry, ...savedAudioEntries]);
@@ -796,7 +830,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     } finally {
       setIsGeneratingAudio(false);
     }
-  }, [documentTitle, readerText, savedAudioEntries, stopSavedAudioPlayback]);
+  }, [documentTitle, readerText, savedAudioEntries, selectedReaderVoiceId, stopSavedAudioPlayback]);
 
   const handleToggleSavedAudioPlayback = useCallback(async (entry) => {
     if (!entry?.uri) {
@@ -1170,7 +1204,30 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
           <View style={[styles.metaFooter, { borderColor: colors.border }]}> 
             <Text style={[styles.metaFooterText, { color: colors.mutedText }]}>{wordCount} words ready to read</Text>
-            <Text style={[styles.metaFooterText, { color: colors.mutedText }]}>Uses your current speech speed preference</Text>
+            <Text style={[styles.metaFooterText, { color: colors.mutedText }]}>Voice: {READER_AUDIO_VOICE_OPTIONS.find((option) => option.id === selectedReaderVoiceId)?.label || 'Lucy'}</Text>
+          </View>
+
+          <View style={styles.voiceOptionRow}>
+            {READER_AUDIO_VOICE_OPTIONS.map((option) => {
+              const isSelected = option.id === selectedReaderVoiceId;
+
+              return (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.voiceOptionButton,
+                    {
+                      borderColor: isSelected ? colors.text : colors.border,
+                      backgroundColor: isSelected ? colors.surfaceAlt : colors.surface
+                    }
+                  ]}
+                  onPress={() => setSelectedReaderVoiceId(option.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.voiceOptionText, { color: colors.text }]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View style={styles.actionRow}>
@@ -1250,7 +1307,14 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
                               style={[styles.savedAudioTitleInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
                             />
                           ) : (
-                            <Text style={[styles.savedAudioTitle, { color: colors.text }]} numberOfLines={1}>{entry.title || 'Reader audio'}</Text>
+                            <View>
+                              <Text style={[styles.savedAudioTitle, { color: colors.text }]} numberOfLines={1}>{entry.title || 'Reader audio'}</Text>
+                              {entry.voiceProfile ? (
+                                <Text style={[styles.savedAudioVoiceMeta, { color: colors.mutedText }]}>
+                                  Voice: {READER_AUDIO_VOICE_OPTIONS.find((option) => option.id === entry.voiceProfile)?.label || entry.voiceProfile}
+                                </Text>
+                              ) : null}
+                            </View>
                           )}
                           <Text style={[styles.savedAudioMeta, { color: colors.mutedText }]} numberOfLines={2}>
                             {isCurrentDraft ? 'Matches current text' : 'Saved from earlier text'}
@@ -1479,9 +1543,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700'
   },
+  voiceOptionRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  voiceOptionButton: {
+    minHeight: 42,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1
+  },
+  voiceOptionText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
   metaText: {
     fontSize: 13,
     lineHeight: 18
+  },
+  savedAudioVoiceMeta: {
+    fontSize: 12,
+    marginTop: 2
   },
   savedAudioSection: {
     gap: 10
