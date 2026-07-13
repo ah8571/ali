@@ -18,6 +18,7 @@ import * as Sentry from '@sentry/react-native';
 import * as WebBrowser from 'expo-web-browser';
 
 import { beginSocialOAuth, completeAuthenticatedUserProfile, loginUser, loginWithSocialProvider, registerUser } from '../services/api.js';
+import legalContent from '../content/legalContent.json';
 import { getOAuthBrowserRedirectUrl, getOAuthRedirectUrl } from '../services/supabaseAuth.js';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -25,6 +26,8 @@ WebBrowser.maybeCompleteAuthSession();
 const OAUTH_REDIRECT_TIMEOUT_MS = 120000;
 const SOCIAL_LOGIN_TIMEOUT_MS = 20000;
 const OAUTH_REDIRECT_DISMISS_GRACE_MS = 2500;
+const REQUIRED_CONSENT_LABEL = legalContent?.consentText?.required
+  || 'I agree to the Terms of Use and Privacy Policy, including Emmaline sharing the content I choose to submit with AI service providers to generate responses, transcripts, summaries, and speech.';
 
 const withTimeout = (promise, timeoutMs, timeoutMessage) => {
   return new Promise((resolve, reject) => {
@@ -606,7 +609,7 @@ const LoginScreen = ({ navigation, onLoginSuccess, pendingProfileSetup = null })
 
   const handleCompletePendingProfileSetup = async () => {
     if (!acceptedRequiredTerms) {
-      setError('You must agree to the Terms of Use and Privacy Policy to create an account.');
+      setError('You must agree before Emmaline can send your content to AI service providers.');
       return;
     }
 
@@ -765,26 +768,28 @@ const LoginScreen = ({ navigation, onLoginSuccess, pendingProfileSetup = null })
                   <View style={[styles.checkbox, acceptedRequiredTerms && styles.checkboxChecked]}>
                     {acceptedRequiredTerms ? <Ionicons name="checkmark" size={16} color="#050607" /> : null}
                   </View>
-                  <Text style={styles.checkboxText}>
-                    I agree to the Terms of Use and Privacy Policy.
-                  </Text>
-                </TouchableOpacity>
+                  <View style={styles.checkboxContent}>
+                    <Text style={styles.checkboxText}>
+                      {REQUIRED_CONSENT_LABEL}
+                    </Text>
 
-                <View style={styles.inlineLinksRow}>
-                  <Text
-                    style={styles.inlineLinkText}
-                    onPress={() => navigation.navigate('TermsOfService')}
-                  >
-                    Terms of Use
-                  </Text>
-                  <Text style={styles.inlineLinkDivider}>•</Text>
-                  <Text
-                    style={styles.inlineLinkText}
-                    onPress={() => navigation.navigate('PrivacyPolicy')}
-                  >
-                    Privacy Policy
-                  </Text>
-                </View>
+                    <View style={styles.inlineLinksRow}>
+                      <Text
+                        style={styles.inlineLinkText}
+                        onPress={() => navigation.navigate('TermsOfService')}
+                      >
+                        Terms of Use
+                      </Text>
+                      <Text style={styles.inlineLinkDivider}>•</Text>
+                      <Text
+                        style={styles.inlineLinkText}
+                        onPress={() => navigation.navigate('PrivacyPolicy')}
+                      >
+                        Privacy Policy
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -1050,17 +1055,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f7fa'
   },
   checkboxText: {
-    flex: 1,
     color: '#d6dbe1',
     fontSize: 13,
     lineHeight: 20,
     paddingTop: 1
   },
+  checkboxContent: {
+    flex: 1,
+    gap: 6
+  },
   inlineLinksRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingLeft: 36
+    gap: 8
   },
   inlineLinkDivider: {
     color: '#8f98a3',

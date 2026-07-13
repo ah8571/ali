@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import appsFlyer from 'react-native-appsflyer';
 import * as Sentry from '@sentry/react-native';
 import * as SecureStorage from '../utils/secureStorage.js';
 import {
@@ -200,6 +201,16 @@ export const registerUser = async (email, password, options = {}) => {
     });
 
     await addTokenToHeaders();
+
+    // Best-effort: notify AppsFlyer about a registration event for SKAN/attribution mapping
+    try {
+      if (appsFlyer && typeof appsFlyer.logEvent === 'function') {
+        appsFlyer.logEvent('registration', { method: 'email' }, (res) => {}, (err) => {});
+      }
+    } catch (e) {
+      // Non-fatal: continue even if AppsFlyer logging fails
+      console.warn('AppsFlyer registration event failed', e?.message || e);
+    }
 
     return {
       success: true,
@@ -706,18 +717,21 @@ export const getCallDetail = async (callId) => {
 };
 
 /**
- * Get Twilio Voice SDK token for in-app VoIP calling
+ * Get a provider-specific voice mode session for in-app audio.
  */
-export const getVoiceToken = async () => {
+export const getVoiceSession = async () => {
   try {
     await addTokenToHeaders();
-    const response = await apiClient.post('/voice/token');
+    const response = await apiClient.post('/voice/session');
 
     return {
       success: true,
-      token: response.data.token,
-      identity: response.data.identity,
-      ttl: response.data.ttl,
+      provider: response.data.provider || response.data.session?.provider || null,
+      transport: response.data.transport || response.data.session?.transport || null,
+      session: response.data.session || null,
+      token: response.data.token || response.data.session?.token || null,
+      identity: response.data.identity || response.data.session?.identity || null,
+      ttl: response.data.ttl || response.data.session?.ttl || null,
       billing: response.data.billing || null
     };
   } catch (error) {
@@ -731,6 +745,13 @@ export const getVoiceToken = async () => {
       statusCode: error.response?.status || null
     };
   }
+};
+
+/**
+ * Backward-compatible alias for older Twilio-specific callers.
+ */
+export const getVoiceToken = async () => {
+  return getVoiceSession();
 };
 
 export const getBillingStatus = async () => {
@@ -796,11 +817,13 @@ export const importReaderDocument = async (fileAsset) => {
   }
 };
 
-export const generateReaderAudio = async ({ text, title, languagePreference = 'en', speechRate = 1 }) => {
+export const generateReaderAudio = async ({ text, title, provider = null, voiceProfile = null, languagePreference = 'en', speechRate = 1 }) => {
   try {
     await addTokenToHeaders();
     logApiRequest('post', '/reader/audio', {
       title: title || null,
+      provider: provider || null,
+      voiceProfile: voiceProfile || null,
       languagePreference,
       speechRate,
       characterCount: String(text || '').trim().length
@@ -808,6 +831,8 @@ export const generateReaderAudio = async ({ text, title, languagePreference = 'e
     const response = await apiClient.post('/reader/audio', {
       text,
       title,
+      provider,
+      voiceProfile,
       languagePreference,
       speechRate
     });
@@ -828,11 +853,13 @@ export const generateReaderAudio = async ({ text, title, languagePreference = 'e
   }
 };
 
-export const saveReaderAudio = async ({ text, title, languagePreference = 'en', speechRate = 1 }) => {
+export const saveReaderAudio = async ({ text, title, provider = null, voiceProfile = null, languagePreference = 'en', speechRate = 1 }) => {
   try {
     await addTokenToHeaders();
     logApiRequest('post', '/reader/audio/save', {
       title: title || null,
+      provider: provider || null,
+      voiceProfile: voiceProfile || null,
       languagePreference,
       speechRate,
       characterCount: String(text || '').trim().length
@@ -840,6 +867,8 @@ export const saveReaderAudio = async ({ text, title, languagePreference = 'en', 
     const response = await apiClient.post('/reader/audio/save', {
       text,
       title,
+      provider,
+      voiceProfile,
       languagePreference,
       speechRate
     });
@@ -1247,6 +1276,7 @@ export default {
   getCalls,
   deleteCall,
   getCallDetail,
+  getVoiceSession,
   getVoiceToken,
   endCall,
   getTranscript,

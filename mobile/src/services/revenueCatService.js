@@ -183,7 +183,25 @@ export const getRevenueCatCustomerInfo = async () => {
 
 export const purchaseRevenueCatPackage = async (selectedPackage) => {
   await ensureConfigured(currentAppUserId);
-  return Purchases.purchasePackage(selectedPackage);
+
+  try {
+    const purchaseResult = await Purchases.purchasePackage(selectedPackage);
+
+    // Best-effort: report subscription event to AppsFlyer for SKAN mapping
+    try {
+      const productId = selectedPackage?.product?.productIdentifier || selectedPackage?.identifier || null;
+
+      if (appsFlyer && typeof appsFlyer.logEvent === 'function') {
+        appsFlyer.logEvent('subscribe', { productId: productId || 'unknown' }, (res) => {}, (err) => {});
+      }
+    } catch (e) {
+      console.warn('AppsFlyer subscription event failed', e?.message || e);
+    }
+
+    return purchaseResult;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const restoreRevenueCatPurchases = async () => {

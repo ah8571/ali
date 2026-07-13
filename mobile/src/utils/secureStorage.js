@@ -8,6 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 const TOKEN_KEY = 'emmaline_auth_token';
 const USER_KEY = 'emmaline_user';
 const PREFERENCES_KEY = 'emmaline_preferences';
+const AI_DISCLOSURE_ACCEPTED_KEY = 'emmaline_ai_disclosure_accepted_v1';
 const DEFAULT_PREFERENCES = {
   callLanguage: 'en',
   speechRate: 1,
@@ -139,6 +140,25 @@ export const savePreferences = async (preferences) => {
   }
 };
 
+export const getAiDisclosureAccepted = async () => {
+  try {
+    return (await SecureStore.getItemAsync(AI_DISCLOSURE_ACCEPTED_KEY)) === 'true';
+  } catch (error) {
+    console.error('Error retrieving AI disclosure preference:', error);
+    return false;
+  }
+};
+
+export const saveAiDisclosureAccepted = async (accepted = true) => {
+  try {
+    await SecureStore.setItemAsync(AI_DISCLOSURE_ACCEPTED_KEY, accepted ? 'true' : 'false');
+    return true;
+  } catch (error) {
+    console.error('Error saving AI disclosure preference:', error);
+    return false;
+  }
+};
+
 export const getCallLanguagePreference = async () => {
   const preferences = await getPreferences();
   return preferences.callLanguage || 'en';
@@ -227,6 +247,8 @@ export default {
   isAuthenticated,
   getPreferences,
   savePreferences,
+  getAiDisclosureAccepted,
+  saveAiDisclosureAccepted,
   getCallLanguagePreference,
   saveCallLanguagePreference,
   getSpeechRatePreference,

@@ -13,14 +13,48 @@ import { textToAudio } from '../services/textToSpeechService.js';
 const router = express.Router();
 const MAX_AUDIO_EXPORT_CHARACTERS = 12000;
 const MAX_AUDIO_CHUNK_LENGTH = 1600;
-const READER_LANGUAGE_CONFIG = {
-  en: {
-    languageCode: 'en-US',
-    voice: process.env.GOOGLE_TTS_VOICE || 'en-US-Neural2-C'
+const DEFAULT_READER_PROVIDER = String(process.env.READER_TTS_PROVIDER || process.env.TTS_PROVIDER || 'google').trim().toLowerCase();
+const DEFAULT_RESEMBLE_VOICE_PROFILE = String(process.env.READER_RESEMBLE_VOICE_PROFILE || 'lucy').trim().toLowerCase();
+const RESEMBLE_MODEL = process.env.RESEMBLE_MODEL || 'chatterbox-turbo';
+const RESEMBLE_VOICE_CATALOG = [
+  {
+    id: 'lucy',
+    voiceUuid: 'fb2d2858',
+    model: RESEMBLE_MODEL
   },
-  es: {
-    languageCode: 'es-US',
-    voice: process.env.GOOGLE_TTS_VOICE_ES || 'es-US-Neural2-A'
+  {
+    id: 'ethan',
+    voiceUuid: 'bee581c1',
+    model: RESEMBLE_MODEL
+  }
+];
+const RESEMBLE_VOICE_PROFILES = RESEMBLE_VOICE_CATALOG.reduce((profiles, voice) => {
+  profiles[voice.id] = {
+    voiceUuid: voice.voiceUuid,
+    model: voice.model
+  };
+  return profiles;
+}, {});
+const READER_PROVIDER_CONFIG = {
+  google: {
+    en: {
+      languageCode: 'en-US',
+      voice: process.env.GOOGLE_TTS_VOICE || 'en-US-Neural2-C'
+    },
+    es: {
+      languageCode: 'es-US',
+      voice: process.env.GOOGLE_TTS_VOICE_ES || 'es-US-Neural2-A'
+    }
+  },
+  resemble: {
+    en: {
+      languageCode: 'en-US',
+      voiceProfile: DEFAULT_RESEMBLE_VOICE_PROFILE
+    },
+    es: {
+      languageCode: 'es-US',
+      voiceProfile: DEFAULT_RESEMBLE_VOICE_PROFILE
+    }
   }
 };
 
@@ -73,8 +107,23 @@ const sanitizeFileStem = (value) => {
   return normalized || 'reader-audio';
 };
 
-const resolveReaderVoiceConfig = (languagePreference) => {
-  return READER_LANGUAGE_CONFIG[languagePreference] || READER_LANGUAGE_CONFIG.en;
+const resolveReaderVoiceConfig = (provider, languagePreference, voiceProfile) => {
+  const providerConfig = READER_PROVIDER_CONFIG[provider] || READER_PROVIDER_CONFIG.google;
+  const baseConfig = providerConfig[languagePreference] || providerConfig.en;
+
+  if (provider !== 'resemble') {
+    return baseConfig;
+  }
+
+  const normalizedProfile = String(voiceProfile || baseConfig.voiceProfile || DEFAULT_RESEMBLE_VOICE_PROFILE).trim().toLowerCase();
+  const profileConfig = RESEMBLE_VOICE_PROFILES[normalizedProfile] || RESEMBLE_VOICE_PROFILES[DEFAULT_RESEMBLE_VOICE_PROFILE] || RESEMBLE_VOICE_PROFILES.lucy;
+
+  return {
+    ...baseConfig,
+    voiceProfile: normalizedProfile,
+    voiceUuid: profileConfig.voiceUuid,
+    model: profileConfig.model
+  };
 };
 
 const normalizeReaderAudioRequest = (body = {}) => {
@@ -82,16 +131,20 @@ const normalizeReaderAudioRequest = (body = {}) => {
   const title = String(body.title || '').trim();
   const languagePreference = String(body.languagePreference || 'en').trim().toLowerCase();
   const speechRate = Math.max(0.75, Math.min(1.1, Number(body.speechRate) || 1));
+  const provider = String(body.provider || DEFAULT_READER_PROVIDER).trim().toLowerCase();
+  const voiceProfile = String(body.voiceProfile || '').trim().toLowerCase();
 
   return {
     normalizedText,
     title,
     languagePreference,
-    speechRate
+    speechRate,
+    provider,
+    voiceProfile
   };
 };
 
-const buildReaderAudioResponse = async ({ normalizedText, title, languagePreference, speechRate }) => {
+const buildReaderAudioResponse = async ({ normalizedText, title, languagePreference, speechRate, provider, voiceProfile }) => {
   if (!normalizedText) {
     throw new Error('Paste text or import a document first.');
   }
@@ -100,17 +153,22 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
     throw new Error(`Audio export is limited to ${MAX_AUDIO_EXPORT_CHARACTERS.toLocaleString()} characters right now.`);
   }
 
-  const voiceConfig = resolveReaderVoiceConfig(languagePreference);
+  const voiceConfig = resolveReaderVoiceConfig(provider, languagePreference, voiceProfile);
   const chunks = splitTextIntoAudioChunks(normalizedText);
   const audioBuffers = [];
 
   for (const chunk of chunks) {
     const audioBuffer = await textToAudio(chunk, {
+      provider,
       languageCode: voiceConfig.languageCode,
       voice: voiceConfig.voice,
       speakingRate: speechRate,
       audioEncoding: 'MP3',
-      responseFormat: 'mp3'
+      responseFormat: 'mp3',
+      outputFormat: 'mp3',
+      title,
+      voiceUuid: voiceConfig.voiceUuid,
+      model: voiceConfig.model
     });
 
     audioBuffers.push(audioBuffer);
@@ -126,7 +184,9 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
     metadata: {
       characterCount: normalizedText.length,
       chunkCount: chunks.length,
-      languageCode: voiceConfig.languageCode
+      languageCode: voiceConfig.languageCode,
+      provider,
+      voiceProfile: voiceConfig.voiceProfile || null
     }
   };
 };
@@ -169,6 +229,8 @@ router.post('/audio/save', authMiddleware, async (req, res) => {
       chunkCount: audioResponse.metadata.chunkCount,
       languageCode: audioResponse.metadata.languageCode,
       metadata: {
+        provider: requestData.provider,
+        voiceProfile: audioResponse.metadata.voiceProfile,
         languagePreference: requestData.languagePreference,
         speechRate: requestData.speechRate
       }

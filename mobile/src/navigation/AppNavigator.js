@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import UpgradeScreen from '../screens/UpgradeScreen';
 import LegalDocumentScreen from '../screens/LegalDocumentScreen';
 import SupportScreen from '../screens/SupportScreen';
-import { getUser, logout as clearStoredAuth } from '../utils/secureStorage.js';
+import { getAiDisclosureAccepted, getUser, logout as clearStoredAuth, saveAiDisclosureAccepted } from '../utils/secureStorage.js';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
 import { getCurrentUser, logoutUser } from '../services/api.js';
@@ -23,6 +23,57 @@ import { handleOAuthRedirect, hasSession, initializeSupabaseAuth, onAuthStateCha
 import { syncRevenueCatUser } from '../services/revenueCatService.js';
 
 const Stack = createStackNavigator();
+
+const AIDisclosureScreen = ({ navigation, isChecking = false, onAccept, onLogout }) => {
+  const { colors } = useAppTheme();
+  const [hasCheckedConsent, setHasCheckedConsent] = useState(false);
+
+  const handleAccept = async () => {
+    if (!hasCheckedConsent) {
+      Alert.alert('Consent required', 'Please confirm the AI data-sharing disclosure before continuing.');
+      return;
+    }
+
+    await onAccept?.();
+  };
+
+  return (
+    <ScrollView style={[styles.disclosureContainer, { backgroundColor: colors.background }]} contentContainerStyle={styles.disclosureContent}>
+      <View style={[styles.disclosureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.disclosureEyebrow, { color: colors.mutedText }]}>Privacy disclosure</Text>
+        <Text style={[styles.disclosureTitle, { color: colors.text }]}>AI processing permission</Text>
+        <Text style={[styles.disclosureBody, { color: colors.mutedText }]}>Before Emmaline processes AI features, we need your permission.</Text>
+        <Text style={[styles.disclosureBody, { color: colors.mutedText }]}>When you use voice mode, Listen Mode, notes, or Reader, Emmaline may send the audio, transcripts, note text, pasted text, or uploaded documents you choose to share to OpenAI, Google Cloud, or Resemble so they can generate transcripts, summaries, spoken audio, or AI responses.</Text>
+
+        <TouchableOpacity style={styles.disclosureCheckboxRow} onPress={() => setHasCheckedConsent((current) => !current)} activeOpacity={0.85}>
+          <View style={[styles.disclosureCheckbox, hasCheckedConsent && styles.disclosureCheckboxChecked, { borderColor: colors.border }]}>
+            {hasCheckedConsent ? <Text style={styles.disclosureCheckboxMark}>✓</Text> : null}
+          </View>
+          <Text style={[styles.disclosureCheckboxText, { color: colors.text }]}>I allow Emmaline to send the content I choose to submit to these AI providers to power AI features.</Text>
+        </TouchableOpacity>
+
+        <View style={styles.disclosureLinksRow}>
+          <Text style={[styles.disclosureLink, { color: colors.accent }]} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>
+          <Text style={[styles.disclosureLinkDivider, { color: colors.mutedText }]}>•</Text>
+          <Text style={[styles.disclosureLink, { color: colors.accent }]} onPress={() => navigation.navigate('TermsOfService')}>Terms of Use</Text>
+        </View>
+
+        {isChecking ? (
+          <ActivityIndicator style={styles.disclosureLoading} color={colors.accent} />
+        ) : (
+          <>
+            <TouchableOpacity style={[styles.disclosureButton, { backgroundColor: colors.text }]} onPress={handleAccept} activeOpacity={0.85}>
+              <Text style={[styles.disclosureButtonText, { color: colors.background }]}>Continue</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.disclosureSecondaryButton, { borderColor: colors.border }]} onPress={onLogout} activeOpacity={0.85}>
+              <Text style={[styles.disclosureSecondaryButtonText, { color: colors.text }]}>Log out</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
+};
 
 const TranscriptStack = ({ onAppHeaderScroll, stackKey, transcriptResetToken }) => {
   const { colors } = useAppTheme();
@@ -301,7 +352,21 @@ const AppNavigator = ({ onAuthStateChange }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingProfileSetup, setPendingProfileSetup] = useState(null);
   const [user, setUser] = useState(null);
+  const [hasAcceptedAiDisclosure, setHasAcceptedAiDisclosure] = useState(false);
+  const [hasResolvedAiDisclosure, setHasResolvedAiDisclosure] = useState(false);
   const { colors, isDarkMode } = useAppTheme();
+
+  const hydrateAiDisclosureState = async () => {
+    const accepted = await getAiDisclosureAccepted();
+    setHasAcceptedAiDisclosure(Boolean(accepted));
+    setHasResolvedAiDisclosure(true);
+  };
+
+  const syncRevenueCatIdentity = (appUserId) => {
+    syncRevenueCatUser(appUserId).catch(() => {
+      // RevenueCat identity sync is best-effort and should not block auth state.
+    });
+  };
 
   const navigationTheme = {
     dark: isDarkMode,
@@ -350,6 +415,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           Sentry.setUser(null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -360,6 +427,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           setPendingProfileSetup(currentUserResponse.profileSetup || null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -370,6 +439,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           Sentry.setUser(null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -383,11 +454,12 @@ const AppNavigator = ({ onAuthStateChange }) => {
               }
             : null
         );
-        await syncRevenueCatUser(storedUser?.id ? String(storedUser.id) : null);
         setPendingProfileSetup(null);
         setUser(storedUser);
         setIsAuthenticated(true);
+        await hydrateAiDisclosureState();
         onAuthStateChange?.(true);
+        syncRevenueCatIdentity(storedUser?.id ? String(storedUser.id) : null);
       } catch (error) {
         Sentry.captureException(error, {
           tags: {
@@ -437,6 +509,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           await syncRevenueCatUser(null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -446,6 +520,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           setPendingProfileSetup(currentUserResponse.profileSetup || null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -456,6 +532,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
           await syncRevenueCatUser(null);
           setIsAuthenticated(false);
           setUser(null);
+          setHasAcceptedAiDisclosure(false);
+          setHasResolvedAiDisclosure(false);
           onAuthStateChange?.(false);
           return;
         }
@@ -469,11 +547,12 @@ const AppNavigator = ({ onAuthStateChange }) => {
               }
             : null
         );
-        await syncRevenueCatUser(nextUser?.id ? String(nextUser.id) : null);
         setPendingProfileSetup(null);
         setUser(nextUser);
         setIsAuthenticated(true);
+        await hydrateAiDisclosureState();
         onAuthStateChange?.(true);
+        syncRevenueCatIdentity(nextUser?.id ? String(nextUser.id) : null);
       }).catch((error) => {
         Sentry.captureException(error, {
           tags: {
@@ -493,7 +572,7 @@ const AppNavigator = ({ onAuthStateChange }) => {
     };
   }, [onAuthStateChange]);
 
-  const handleLoginSuccess = (userData) => {
+  const handleLoginSuccess = async (userData) => {
     Sentry.setUser(
       userData?.id
         ? {
@@ -508,6 +587,7 @@ const AppNavigator = ({ onAuthStateChange }) => {
     setPendingProfileSetup(null);
     setUser(userData);
     setIsAuthenticated(true);
+    await hydrateAiDisclosureState();
     onAuthStateChange?.(true);
   };
 
@@ -524,6 +604,8 @@ const AppNavigator = ({ onAuthStateChange }) => {
     setPendingProfileSetup(null);
     setUser(null);
     setIsAuthenticated(false);
+    setHasAcceptedAiDisclosure(false);
+    setHasResolvedAiDisclosure(false);
     onAuthStateChange?.(false);
   };
 
@@ -554,13 +636,36 @@ const AppNavigator = ({ onAuthStateChange }) => {
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.background } }}>
-          <Stack.Screen 
-            name="App" 
-            options={{
-              animationEnabled: false
-            }}
-          >
-            {() => <AppHome onLogout={handleLogout} />}
+          {!hasAcceptedAiDisclosure ? (
+            <Stack.Screen name="AIDisclosure" options={{ animationEnabled: false }}>
+              {(screenProps) => (
+                <AIDisclosureScreen
+                  {...screenProps}
+                  isChecking={!hasResolvedAiDisclosure}
+                  onAccept={async () => {
+                    await saveAiDisclosureAccepted(true);
+                    setHasAcceptedAiDisclosure(true);
+                    setHasResolvedAiDisclosure(true);
+                  }}
+                  onLogout={handleLogout}
+                />
+              )}
+            </Stack.Screen>
+          ) : (
+            <Stack.Screen 
+              name="App" 
+              options={{
+                animationEnabled: false
+              }}
+            >
+              {() => <AppHome onLogout={handleLogout} />}
+            </Stack.Screen>
+          )}
+          <Stack.Screen name="PrivacyPolicy" options={{ headerShown: false }}>
+            {() => <LegalDocumentScreen documentKey="privacyPolicy" />}
+          </Stack.Screen>
+          <Stack.Screen name="TermsOfService" options={{ headerShown: false }}>
+            {() => <LegalDocumentScreen documentKey="termsOfService" />}
           </Stack.Screen>
         </Stack.Navigator>
       )}
@@ -641,5 +746,99 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1
+  },
+  disclosureContainer: {
+    flex: 1
+  },
+  disclosureContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20
+  },
+  disclosureCard: {
+    borderWidth: 1,
+    borderRadius: designTokens.radius.lg,
+    padding: 20,
+    gap: 14
+  },
+  disclosureEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8
+  },
+  disclosureTitle: {
+    fontSize: 26,
+    fontWeight: '700'
+  },
+  disclosureBody: {
+    fontSize: 14,
+    lineHeight: 21
+  },
+  disclosureCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 4
+  },
+  disclosureCheckbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1
+  },
+  disclosureCheckboxChecked: {
+    backgroundColor: '#111111'
+  },
+  disclosureCheckboxMark: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  disclosureCheckboxText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '600'
+  },
+  disclosureLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  disclosureLink: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  disclosureLinkDivider: {
+    fontSize: 14
+  },
+  disclosureButton: {
+    minHeight: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6
+  },
+  disclosureButtonText: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  disclosureSecondaryButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  disclosureSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  disclosureLoading: {
+    marginTop: 12
   }
 });

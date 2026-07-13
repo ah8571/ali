@@ -1,12 +1,12 @@
 {
   "supportEmail": "support@emmaline.app",
   "consentText": {
-    "required": "I agree to the Terms of Use and Privacy Policy, including Emmaline's handling of call audio, transcripts, notes, uploaded documents, and AI processing.",
+    "required": "I agree to the Terms of Use and Privacy Policy, and I authorize Emmaline to send the audio, transcripts, notes, and uploaded text or documents I choose to share to OpenAI, Google Cloud, or Resemble when needed to generate AI responses, transcripts, summaries, or speech.",
     "marketing": "I agree to receive the educational newsletter and product updates from Emmaline. I can unsubscribe at any time."
   },
   "privacyPolicy": {
     "title": "Privacy Policy",
-    "lastUpdated": "2026-06-21",
+    "lastUpdated": "2026-07-13",
     "intro": [
       "Emmaline is a product of Planting Moon LLC, located at 5830 E 2nd St, Ste 7000 #35119, Casper, Wyoming 82609.",
       "This Privacy Policy explains how Emmaline collects, uses, stores, and shares information when you use the Emmaline mobile app, website, and related services.",
@@ -31,11 +31,13 @@
         "title": "How We Use Information",
         "body": [
           "We use information to provide the service, authenticate users, power voice calls, generate transcripts and summaries, respond to support requests, manage subscriptions if offered, and improve reliability.",
-          "We do not currently use third-party advertising networks inside the app or website."
+          "We do not currently use third-party advertising networks inside the app or website.",
+          "If attribution features are enabled, we may use privacy-focused measurement tools such as Apple's SKAdNetwork through AppsFlyer to measure campaign performance in an aggregated way without requesting App Tracking Transparency permission or using IDFA-based ad tracking."
         ],
         "bullets": [
           "Deliver voice, transcript, note, reader, and account features",
           "Process AI-generated responses, summaries, and speech features",
+          "Measure aggregated campaign performance through privacy-oriented attribution tooling when enabled",
           "Send operational emails such as support replies or account notices",
           "Send optional newsletters and product updates only if you opt in",
           "Maintain security, prevent abuse, and investigate service issues"
@@ -54,15 +56,29 @@
         ]
       },
       {
+        "title": "AI Service Disclosure and Permission",
+        "body": [
+          "Emmaline only sends content to third-party AI providers after you choose to use an AI-powered feature and agree to our in-app disclosure.",
+          "Depending on the feature, the data sent may include your voice audio, transcripts, notes, pasted text, uploaded documents, or reader text so the provider can return the requested transcript, summary, spoken audio, or AI response."
+        ],
+        "bullets": [
+          "OpenAI may process transcript text, note text, reader text, and some voice-session content to generate AI responses and summaries",
+          "Google Cloud may process uploaded audio or text for speech recognition and some speech features",
+          "Resemble may process reader text to generate spoken audio"
+        ]
+      },
+      {
         "title": "Third-Party Services",
         "body": [
           "We use third-party infrastructure providers to operate Emmaline. These providers process data on our behalf to deliver specific parts of the service.",
-          "Your use of Emmaline may involve the services listed below depending on which features you use."
+          "Your use of Emmaline may involve the services listed below depending on which features you use.",
+          "When we share personal data with these service providers, we do so only for the limited purposes described in this policy and require them to protect the data under terms intended to provide the same or equivalent level of privacy and security protection that we provide under this policy."
         ],
         "bullets": [
-          "Twilio for voice calling and phone infrastructure",
           "OpenAI for transcription, summarization, and AI response generation",
           "Google Cloud for some speech recognition and text-to-speech features",
+          "Resemble for some text-to-speech features",
+          "AppsFlyer for privacy-focused attribution measurement using SKAdNetwork when enabled",
           "Supabase for application data storage and account-related records",
           "Resend for support and waitlist or newsletter-related email delivery when configured"
         ]
