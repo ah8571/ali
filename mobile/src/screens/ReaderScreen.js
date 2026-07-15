@@ -45,6 +45,11 @@ const READER_AUDIO_VOICE_OPTIONS = [
     id: 'ethan',
     label: 'Ethan',
     provider: 'resemble'
+  },
+  {
+    id: 'basic',
+    label: 'Basic',
+    provider: 'device'
   }
 ];
 
@@ -616,6 +621,12 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       logReaderTts('speakNextChunk:startTimeout', {
         chunkIndex: speechIndexRef.current
       });
+
+      if (!fallbackConfig) {
+        setIsSpeaking(false);
+        return;
+      }
+
       Speech.stop().catch(() => {
         // Ignore best-effort stop failures when the engine never bound.
       });
@@ -701,11 +712,28 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
     await stopReading();
 
+    const voiceOption = READER_AUDIO_VOICE_OPTIONS.find((o) => o.id === selectedReaderVoiceId);
+    const isBasicVoice = voiceOption?.provider === 'device';
+
     const [languagePreference, savedSpeechRate] = await Promise.all([
       getCallLanguagePreference(),
       getSpeechRatePreference()
     ]);
     const speechRate = Math.max(0.75, Math.min(1.1, Number(savedSpeechRate) || 1));
+
+    // Basic voice uses device TTS — no backend call, no credits.
+    if (isBasicVoice) {
+      const language = resolveSpeechLanguage(languagePreference);
+      const chunks = splitTextIntoSpeechChunks(normalizedText);
+      speechChunksRef.current = chunks;
+      speechIndexRef.current = 0;
+      speechCancelledRef.current = false;
+      setIsSpeaking(true);
+      logReaderTts('handleReadAloud:basicVoice', { chunks: chunks.length, language });
+      speakNextChunk(language, speechRate, null);
+      return;
+    }
+
     const fallbackConfig = {
       text: normalizedText,
       title: documentTitle,
