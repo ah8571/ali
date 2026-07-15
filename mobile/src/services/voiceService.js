@@ -89,18 +89,16 @@ let onNotesChangedListener = null;
 let callStartedAtMs = null;
 let callVoice = null;
 let callModel = null;
-let selectedAudioRoute = Platform.OS === 'android' ? { uuid: 'speaker', type: 'speaker', name: 'Speaker' } : null;
+let selectedAudioRoute = null;
 
 export const setOnNotesChanged = (callback) => {
   onNotesChangedListener = callback;
 };
 
-const audioRoutes = Platform.OS === 'android'
-  ? [
-    { uuid: 'speaker', type: 'speaker', name: 'Speaker' },
-    { uuid: 'earpiece', type: 'earpiece', name: 'Phone' }
-  ]
-  : [];
+const audioRoutes = [
+  { uuid: 'speaker', type: 'speaker', name: 'Speaker' },
+  { uuid: 'earpiece', type: 'earpiece', name: 'Phone' }
+];
 
 const muteListeners = new Set();
 const audioDeviceListeners = new Set();
@@ -646,8 +644,10 @@ export const selectAudioDevice = async (deviceUuid) => {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: activeCall,
       playsInSilentModeIOS: true,
-      playThroughEarpieceAndroid: nextRoute.type === 'earpiece',
-      staysActiveInBackground: false
+      staysActiveInBackground: false,
+      ...(Platform.OS === 'android'
+        ? { playThroughEarpieceAndroid: nextRoute.type === 'earpiece' }
+        : {})
     });
 
     return {
