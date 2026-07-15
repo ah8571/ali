@@ -653,7 +653,7 @@ const AppContent = () => {
     return (
       <AppThemeProvider value={{ isDarkMode, colors, toggleTheme: handleToggleTheme }}>
         <View style={styles.splashScreen}>
-          <Image source={require('../assets/launch-splash-icon-black.png')} style={styles.splashIcon} resizeMode="contain" />
+          <Image source={require('../assets/white-outline-favicon.png')} style={styles.splashIcon} resizeMode="contain" />
           <Text style={styles.splashLabel}>Emmaline</Text>
         </View>
       </AppThemeProvider>
