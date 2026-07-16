@@ -178,6 +178,15 @@ export const saveCallVoicePreference = async (callVoice) => {
   return savePreferences({ callVoice: String(callVoice || DEFAULT_PREFERENCES.callVoice) });
 };
 
+export const getVoiceProviderPreference = async () => {
+  const preferences = await getPreferences();
+  return String(preferences.voiceProvider || 'openai').trim().toLowerCase();
+};
+
+export const saveVoiceProviderPreference = async (provider) => {
+  return savePreferences({ voiceProvider: String(provider || 'openai').trim().toLowerCase() });
+};
+
 export const getSpeechRatePreference = async () => {
   const preferences = await getPreferences();
   const speechRate = Number(preferences.speechRate);
@@ -263,6 +272,8 @@ export default {
   saveCallLanguagePreference,
   getCallVoicePreference,
   saveCallVoicePreference,
+  getVoiceProviderPreference,
+  saveVoiceProviderPreference,
   getSpeechRatePreference,
   saveSpeechRatePreference,
   getCallResponseDelayPreference,

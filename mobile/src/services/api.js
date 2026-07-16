@@ -815,6 +815,25 @@ export const getVoiceToken = async () => {
   return getVoiceSession();
 };
 
+export const createGrokVoiceSession = async (options = {}) => {
+  try {
+    addTokenToHeaders();
+    const response = await apiClient.post('/voice/grok/session', {
+      voice: String(options.voice || 'eve').trim() || 'eve'
+    });
+
+    return {
+      success: true,
+      ...response.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: formatApiError(error, 'Unable to start Grok voice session.')
+    };
+  }
+};
+
 export const createVoiceCallConnection = async (offerSdp, options = {}) => {
   try {
     const token = await getAccessToken();

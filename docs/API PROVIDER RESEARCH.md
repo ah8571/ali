@@ -137,25 +137,6 @@ Why:
 - Twilio should no longer be the center of the in-app voice experience
 - Grok Voice Agent is OpenAI Realtime API-compatible — switching is a URL + API key change for WebSocket clients, or a WebSocket transport build for WebRTC clients
 
-### Grok Voice Agent (xAI) — Alternative to OpenAI Realtime
-
-- **Docs:** https://docs.x.ai/developers/model-capabilities/audio/voice
-- **Voice Agent API:** https://docs.x.ai/developers/model-capabilities/audio/voice-agent
-- **LiveKit Integration:** https://docs.livekit.io/agents/integrations/xai/
-- **Pricing:** ~$0.06 input + ~$0.18 output per minute (~half of OpenAI)
-- **Model:** `grok-voice-latest` (currently `grok-voice-think-fast-1.0`)
-- **Protocol:** WebSocket (primary), WebRTC via LiveKit
-- **Event compatibility:** OpenAI Realtime API-compatible — same `session.update`, `response.create`, function calling schema
-- **Key differences from OpenAI:**
-  - `server_vad` built-in (no client-side VAD needed)
-  - `reasoning.effort` toggle (high/none) for complex queries
-  - `resumption` for reconnecting sessions
-  - `replace` for pronunciation fixes
-  - `force_message` for scripted TTS utterances
-  - Event name: `input_audio_transcription.updated` (cumulative) vs OpenAI's `delta`
-- **Languages:** 20+ with native accents, including Spanish (es-MX, es-ES)
-- **Our integration effort:** Medium — event protocol identical, but we need a WebSocket transport layer alongside our current WebRTC implementation. Feature-flag behind settings.
-
 ### B. Reader Voice
 Recommended evaluation order:
 1. ElevenLabs
@@ -192,4 +173,26 @@ Best future Twilio use cases:
 - direct phone calls to an agent
 - direct texting to an agent
 - PSTN connectivity and number-based experiences
+
+# Provider research
+
+### Grok Voice Agent (xAI) — Alternative to OpenAI Realtime
+
+- **Docs:** https://docs.x.ai/developers/model-capabilities/audio/voice
+- **Voice Agent API:** https://docs.x.ai/developers/model-capabilities/audio/voice-agent
+- **LiveKit Integration:** https://docs.livekit.io/agents/integrations/xai/
+- **Pricing:** ~$0.06 input + ~$0.18 output per minute (~half of OpenAI)
+- **Login/ Credits** https://console.x.ai/home
+- **Model:** `grok-voice-latest` (currently `grok-voice-think-fast-1.0`)
+- **Protocol:** WebSocket (primary), WebRTC via LiveKit
+- **Event compatibility:** OpenAI Realtime API-compatible — same `session.update`, `response.create`, function calling schema
+- **Key differences from OpenAI:**
+  - `server_vad` built-in (no client-side VAD needed)
+  - `reasoning.effort` toggle (high/none) for complex queries
+  - `resumption` for reconnecting sessions
+  - `replace` for pronunciation fixes
+  - `force_message` for scripted TTS utterances
+  - Event name: `input_audio_transcription.updated` (cumulative) vs OpenAI's `delta`
+- **Languages:** 20+ with native accents, including Spanish (es-MX, es-ES)
+- **Our integration effort:** Medium — event protocol identical, but we need a WebSocket transport layer alongside our current WebRTC implementation. Feature-flag behind settings.
 
