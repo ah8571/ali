@@ -129,6 +129,11 @@ export const startGrokVoiceCall = async ({ voice = DEFAULT_GROK_VOICE, onStatusC
     callStartedAtMs = Date.now();
     onStatusChange?.('live');
 
+    // Send initial greeting so the user hears audio immediately
+    setTimeout(() => {
+      sendGrokText('Hi');
+    }, 800);
+
     return { success: true, provider: GROK_PROVIDER };
   } catch (error) {
     await cleanupGrokCall();
