@@ -26,8 +26,19 @@ import {
   toggleMute
 } from './services/voiceService.js';
 import {
+  endGrokVoiceCall,
+  getGrokCallActive,
+  getGrokMuteState,
+  sendGrokText,
+  setGrokMuted,
+  startGrokVoiceCall,
+  subscribeToGrokMute,
+  subscribeToGrokTranscript
+} from './services/grokVoiceService.js';
+import {
   getCallLanguagePreference,
   getCallVoicePreference,
+  getVoiceProviderPreference,
   getThemeModePreference,
   saveThemeModePreference
 } from './utils/secureStorage.js';
@@ -82,6 +93,8 @@ const AppContent = () => {
   const [callActivityState, setCallActivityState] = useState('idle');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLaunchSplash, setShowLaunchSplash] = useState(true);
+  const [voiceProvider, setVoiceProvider] = useState('openai');
+  const [grokTextInput, setGrokTextInput] = useState('');
   const [listenModeState, setListenModeState] = useState('idle');
   const [showModePicker, setShowModePicker] = useState(false);
   const [shouldPreferSpeaker, setShouldPreferSpeaker] = useState(false);
@@ -392,14 +405,18 @@ const AppContent = () => {
         statusCode: voiceSessionResponse.statusCode
       });
 
-      const [callLanguage, callVoice] = await Promise.all([
+      const [callLanguage, callVoice, storedProvider] = await Promise.all([
         getCallLanguagePreference(),
-        getCallVoicePreference()
+        getCallVoicePreference(),
+        getVoiceProviderPreference()
       ]);
+
+      setVoiceProvider(storedProvider);
 
       traceLiveCallStage('voice_preferences_loaded', {
         callLanguage: callLanguage || 'en',
-        callVoice: callVoice || 'marin'
+        callVoice: callVoice || 'marin',
+        voiceProvider: storedProvider
       });
 
       const canProceedWithoutBootstrapSession = voiceSessionResponse.code === 'VOICE_OPENAI_SESSION_FAILED';
@@ -442,6 +459,46 @@ const AppContent = () => {
           code: voiceSessionResponse.code,
           statusCode: voiceSessionResponse.statusCode
         });
+      }
+
+      const isGrok = storedProvider === 'grok';
+
+      if (isGrok) {
+        // Grok WebSocket voice mode
+        const grokResponse = await startGrokVoiceCall({
+          voice: callVoice || 'eve',
+          onStatusChange: (status) => {
+            traceLiveCallStage(`grok_provider_status_${status}`);
+            syncCallActivityFromStage(`voice_provider_status_${status}`);
+            setCallStatus(status);
+
+            if (status === 'live') {
+              setIsCalling(true);
+              return;
+            }
+
+            if (status === 'ended' || status === 'failed') {
+              setIsCalling(false);
+              setCallActivityState('idle');
+              setShouldPreferSpeaker(false);
+              resetLiveCallTrace();
+            }
+          },
+          onTrace: (stage, details) => {
+            traceLiveCallStage(stage, details);
+            syncCallActivityFromStage(stage);
+          }
+        });
+
+        if (!grokResponse.success) {
+          setIsCalling(false);
+          setCallStatus('failed');
+          setCallActivityState('idle');
+          setShouldPreferSpeaker(false);
+          resetLiveCallTrace();
+          Alert.alert('Grok call failed', grokResponse.error || 'Unable to start Grok voice mode.');
+        }
+        return;
       }
 
       const response = await startVoiceCall({
@@ -613,11 +670,40 @@ const AppContent = () => {
   };
 
   const handleToggleMute = async () => {
+    if (voiceProvider === 'grok') {
+      setGrokMuted(!getGrokMuteState());
+      return;
+    }
+
     const response = await toggleMute();
 
     if (!response.success) {
       Alert.alert('Mute unavailable', response.error || 'Unable to change mute state.');
     }
+  };
+
+  const handleGrokSendText = () => {
+    const text = grokTextInput.trim();
+    if (!text || !getGrokCallActive()) return;
+
+    sendGrokText(text);
+    setGrokTextInput('');
+  };
+
+  const handleEndCall = async () => {
+    if (voiceProvider === 'grok') {
+      await endGrokVoiceCall();
+    } else {
+      await endVoiceCall();
+    }
+
+    setIsCalling(false);
+    setCallStatus('idle');
+    setCallActivityState('idle');
+    setAudioDevices([]);
+    setSelectedAudioDevice(null);
+    setIsMuted(false);
+    setShouldPreferSpeaker(false);
   };
 
   const handleToggleTheme = async () => {
@@ -712,6 +798,10 @@ const AppContent = () => {
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
             callActivityState={callActivityState}
+            voiceProvider={voiceProvider}
+            grokTextInput={grokTextInput}
+            onGrokTextChange={setGrokTextInput}
+            onGrokSendText={handleGrokSendText}
             bottomInset={appBottomRailHeight}
             topInset={insets.top}
           />

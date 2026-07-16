@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
+  TextInput,
   Animated
 } from 'react-native';
 import { useAppTheme } from '../theme/appTheme.js';
@@ -27,7 +28,11 @@ const FloatingCallButton = ({
   onToggleMute,
   bottomInset = 0,
   topInset = 0,
-  callActivityState = 'idle'
+  callActivityState = 'idle',
+  voiceProvider = 'openai',
+  grokTextInput = '',
+  onGrokTextChange,
+  onGrokSendText
 }) => {
   const [scaleAnim] = React.useState(new Animated.Value(1));
   const [orbScaleAnim] = React.useState(new Animated.Value(1));
@@ -205,6 +210,28 @@ const FloatingCallButton = ({
               />
             </View>
 
+            {voiceProvider === 'grok' ? (
+              <View style={styles.grokInputRow}>
+                <TextInput
+                  style={[styles.grokTextInput, { color: colors.text, backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+                  placeholder="Type a message..."
+                  placeholderTextColor={colors.mutedText}
+                  value={grokTextInput}
+                  onChangeText={onGrokTextChange}
+                  onSubmitEditing={onGrokSendText}
+                  returnKeyType="send"
+                  autoCorrect
+                />
+                <TouchableOpacity
+                  style={[styles.grokSendButton, { backgroundColor: colors.accent }]}
+                  onPress={onGrokSendText}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="send" size={16} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             <View style={styles.liveCallFooter}>
               <TouchableOpacity
                 style={[
@@ -362,6 +389,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 18,
     paddingBottom: 22
+  },
+  grokInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8
+  },
+  grokTextInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15
+  },
+  grokSendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   liveCallMinimizeButton: {
     position: 'absolute',
