@@ -56,6 +56,9 @@ export default function SiteFooter() {
             <Link href="/terms" className="transition hover:text-white">
               Terms
             </Link>
+            <Link href="/eula" className="transition hover:text-white">
+              EULA
+            </Link>
             <Link href="/support" className="transition hover:text-white">
               Support
             </Link>

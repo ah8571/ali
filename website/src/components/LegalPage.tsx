@@ -1,6 +1,6 @@
 import legalContent from '../../../shared/legalContent.json';
 
-type DocumentKey = 'privacyPolicy' | 'termsOfService';
+type DocumentKey = 'privacyPolicy' | 'termsOfService' | 'eula';
 
 type LegalPageProps = {
   documentKey: DocumentKey;
