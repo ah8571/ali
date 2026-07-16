@@ -198,7 +198,12 @@ const playBufferedAudio = async () => {
     const pcmBuffer = Buffer.concat(audioBuffers);
     audioBuffers = [];
 
-    if (pcmBuffer.length < 100) return; // Skip empty audio
+    if (pcmBuffer.length < 100) {
+      console.log('[GrokVoice] Skipping empty audio buffer');
+      return;
+    }
+
+    console.log('[GrokVoice] Playing audio:', { pcmBytes: pcmBuffer.length });
 
     // Write PCM to temp WAV file for playback
     const wavPath = GROK_AUDIO_FILE.replace('.pcm', '.wav');
