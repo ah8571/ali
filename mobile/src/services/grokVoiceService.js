@@ -114,6 +114,7 @@ export const startGrokVoiceCall = async ({ voice = DEFAULT_GROK_VOICE, onStatusC
         }
       }
     }));
+    console.log('[GrokVoice] Session configured, waiting for audio');
 
     // Set up audio for playback
     await Audio.setAudioModeAsync({
@@ -152,6 +153,11 @@ export const startGrokVoiceCall = async ({ voice = DEFAULT_GROK_VOICE, onStatusC
 };
 
 const handleGrokMessage = (msg) => {
+  if (!handleGrokMessage._firstLog) {
+    console.log('[GrokVoice] Server event:', msg.type);
+    handleGrokMessage._firstLog = true;
+  }
+
   switch (msg.type) {
     case 'response.output_audio.delta':
       if (msg.delta) {
@@ -336,11 +342,17 @@ const startMicCapture = async () => {
         if (wavBuffer.length > 44) {
           const pcmBuffer = wavBuffer.slice(44); // Strip WAV header
           const pcmBase64 = pcmBuffer.toString('base64');
+
+          if (!startMicCapture._logged) {
+            console.log('[GrokVoice] Mic chunk:', { wavBytes: wavBuffer.length, pcmBytes: pcmBuffer.length, sampleRate: 24000 });
+            startMicCapture._logged = true;
+          }
+
           activeSocket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcmBase64 }));
         }
       }
     } catch (err) {
-      // Chunk errors are non-fatal — just restart
+      console.log('[GrokVoice] Mic chunk error:', err.message);
     }
 
     await recordChunk();
