@@ -343,7 +343,8 @@ const AppContent = () => {
   }, [audioDevices, isCalling, selectedAudioDevice, shouldPreferSpeaker]);
 
   const stopLiveCall = async () => {
-    const endResponse = await endVoiceCall();
+    const endFn = voiceProvider === 'grok' ? endGrokVoiceCall : endVoiceCall;
+    const endResponse = await endFn();
 
     if (!endResponse.success) {
       Alert.alert('End call failed', endResponse.error || 'Unable to end call.');
