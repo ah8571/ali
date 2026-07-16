@@ -289,7 +289,10 @@ const startMicCapture = async () => {
   micActive = true;
 
   const sendChunk = async () => {
-    if (!micActive || !activeSocket || activeSocket.readyState !== WebSocket.OPEN) return;
+    if (!micActive || !activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+      console.log('[GrokVoice] Mic loop stopped:', { micActive, socketReady: activeSocket?.readyState });
+      return;
+    }
 
     const recording = new Audio.Recording();
     try {
@@ -328,21 +331,24 @@ const startMicCapture = async () => {
           const pcmBuffer = wavBuffer.slice(44);
           const pcmBase64 = pcmBuffer.toString('base64');
 
-          if (!startMicCapture._loggedChunk) {
-            console.log('[GrokVoice] Mic chunk sent:', { pcmBytes: pcmBuffer.length });
-            startMicCapture._loggedChunk = true;
+          if (!startMicCapture._chunkCount) startMicCapture._chunkCount = 0;
+          startMicCapture._chunkCount++;
+          if (startMicCapture._chunkCount <= 3) {
+            console.log('[GrokVoice] Mic chunk sent:', startMicCapture._chunkCount, { pcmBytes: pcmBuffer.length });
           }
 
           activeSocket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcmBase64 }));
         }
       }
     } catch (err) {
-      // Chunk failed — continue to next
+      console.log('[GrokVoice] Chunk error:', err.message);
     }
 
     // Next chunk
     if (micActive) {
       setTimeout(sendChunk, 10);
+    } else {
+      console.log('[GrokVoice] Mic loop ending, micActive=false');
     }
   };
 
