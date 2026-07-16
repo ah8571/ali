@@ -364,6 +364,19 @@ const stopMicCapture = () => {
 };
 
 export const sendGrokText = (text) => {
+  if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) return;
+
+  activeSocket.send(JSON.stringify({
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [{ type: 'input_text', text }]
+    }
+  }));
+
+  activeSocket.send(JSON.stringify({ type: 'response.create' }));
+};
 
 export const endGrokVoiceCall = async () => {
   await cleanupGrokCall();
