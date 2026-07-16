@@ -25,7 +25,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const OAUTH_REDIRECT_TIMEOUT_MS = 120000;
 const SOCIAL_LOGIN_TIMEOUT_MS = 20000;
-const OAUTH_REDIRECT_DISMISS_GRACE_MS = 2500;
+const OAUTH_REDIRECT_DISMISS_GRACE_MS = 5000;
 const REQUIRED_CONSENT_LABEL = legalContent?.consentText?.required
   || 'I agree to the Terms of Use and Privacy Policy, including Emmaline sharing the content I choose to submit with AI service providers to generate responses, transcripts, summaries, and speech.';
 
