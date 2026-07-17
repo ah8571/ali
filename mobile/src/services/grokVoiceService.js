@@ -17,7 +17,6 @@ let onTrace = null;
 let callStartedAtMs = null;
 let audioBuffers = [];
 let playbackSound = null;
-let nextPlaybackSound = null;
 let responseInProgress = false;
 let micActive = false;
 let activePcmSession = null;
@@ -140,43 +139,26 @@ const queueBufferedAudioSegment = async ({ force = false } = {}) => {
 };
 
 const playNextBufferedSegment = async () => {
-  if (playbackActive || playbackQueue.length === 0) {
-    return;
-  }
-
+  if (playbackActive || playbackQueue.length === 0) return;
   playbackActive = true;
+
   const nextSegment = playbackQueue.shift();
 
   try {
-    // Preload: if we already have the next sound ready, swap it in immediately
-    if (nextPlaybackSound) {
-      if (playbackSound) {
-        await playbackSound.unloadAsync().catch(() => {});
-      }
-      playbackSound = nextPlaybackSound;
-      nextPlaybackSound = null;
-      await playbackSound.playAsync();
-    } else {
-      if (playbackSound) {
-        await playbackSound.unloadAsync().catch(() => {});
-        playbackSound = null;
-      }
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: nextSegment.uri },
-        { shouldPlay: true }
-      );
-      playbackSound = sound;
+    // Create the new sound BEFORE unloading the old one
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: nextSegment.uri },
+      { shouldPlay: false }
+    );
+
+    // Unload previous and swap in the new one
+    if (playbackSound) {
+      await playbackSound.unloadAsync().catch(() => {});
     }
+    playbackSound = sound;
+    await playbackSound.playAsync();
 
     console.log('[GrokVoice] Playing audio segment:', { pcmBytes: nextSegment.pcmBytes, queuedSegments: playbackQueue.length });
-
-    // Preload the next segment while this one plays
-    if (playbackQueue.length > 0) {
-      const upcoming = playbackQueue[0];
-      Audio.Sound.createAsync({ uri: upcoming.uri }, { shouldPlay: false }).then(({ sound }) => {
-        nextPlaybackSound = sound;
-      }).catch(() => {});
-    }
 
     playbackSound.setOnPlaybackStatusUpdate((status) => {
       if (!status.isLoaded) return;
@@ -469,11 +451,6 @@ const cleanupGrokCall = async () => {
   if (playbackSound) {
     try { await playbackSound.unloadAsync(); } catch {}
     playbackSound = null;
-  }
-
-  if (nextPlaybackSound) {
-    try { await nextPlaybackSound.unloadAsync(); } catch {}
-    nextPlaybackSound = null;
   }
 
   if (activeSocket) {
