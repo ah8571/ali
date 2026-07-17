@@ -61,7 +61,7 @@ though TECHNICALLY we could have a seperate tab devoted to inbound calls to a nu
 consider a 'silent text' option in the speaker section but designed with this kind of voice mode screen (ie a kind of transparent overlay screen), where you can type in to chat and the ai responds, so you can see (but we would need to go through the process of integrating the providers )
 
 - perhaps first screens for new users teach them some of the benefits of the app
-- add education as an app category for the app
+
 
 cleaner product framing:
 Also in the app or on the website: Call or text Emmaline at <number>

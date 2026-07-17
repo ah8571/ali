@@ -17,9 +17,7 @@ let callStartedAtMs = null;
 let audioBuffers = [];
 let playbackSound = null;
 let responseInProgress = false;
-let micRecording = null;
 let micActive = false;
-let micBytesSent = 0;
 const MIC_CHUNK_MS = 500;
 
 const muteListeners = new Set();
@@ -293,108 +291,73 @@ const cleanupGrokCall = async () => {
 
 const startMicCapture = async () => {
   micActive = true;
-  micBytesSent = 0;
 
-  try {
-    // Single persistent recording — eliminates ~150ms gaps between chunks
-    // that were garbling speech for Grok's server-side VAD.
+  const RECORDING_CONFIG = {
+    android: {
+      extension: '.wav',
+      outputFormat: 2,
+      audioEncoder: 1,
+      sampleRate: 24000,
+      numberOfChannels: 1
+    },
+    ios: {
+      extension: '.wav',
+      outputFormat: 'lpcm',
+      audioQuality: 127,
+      sampleRate: 24000,
+      numberOfChannels: 1,
+      linearPCMBitDepth: 16,
+      linearPCMIsBigEndian: false,
+      linearPCMIsFloat: false
+    }
+  };
+
+  const sendChunk = async () => {
+    if (!micActive || !activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+      console.log('[GrokVoice] Mic loop stopped:', { micActive, socketReady: activeSocket?.readyState });
+      return;
+    }
+
     const recording = new Audio.Recording();
-    micRecording = recording;
+    try {
+      await recording.prepareToRecordAsync(RECORDING_CONFIG);
+      await recording.startAsync();
+      await new Promise((r) => setTimeout(r, MIC_CHUNK_MS));
+      await recording.stopAndUnloadAsync();
 
-    await recording.prepareToRecordAsync({
-      android: {
-        extension: '.wav',
-        outputFormat: 2,
-        audioEncoder: 1,
-        sampleRate: 24000,
-        numberOfChannels: 1
-      },
-      ios: {
-        extension: '.wav',
-        outputFormat: 'lpcm',
-        audioQuality: 127,
-        sampleRate: 24000,
-        numberOfChannels: 1,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false
-      }
-    });
+      const uri = recording.getURI();
+      if (uri && micActive && !isMuted && activeSocket?.readyState === WebSocket.OPEN) {
+        const wavBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        const wavBuffer = Buffer.from(wavBase64, 'base64');
 
-    await recording.startAsync();
-    console.log('[GrokVoice] Continuous mic recording started');
+        if (wavBuffer.length > 44) {
+          const pcmBuffer = wavBuffer.slice(44);
+          const pcmBase64 = pcmBuffer.toString('base64');
 
-    // Poll the growing WAV file to send only new PCM data each interval
-    const pollAndSend = async () => {
-      if (!micActive || !activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
-        console.log('[GrokVoice] Mic poll stopped:', { micActive, socketReady: activeSocket?.readyState });
-        await stopAndFinalizeRecording();
-        return;
-      }
-
-      try {
-        const uri = recording.getURI();
-        if (uri) {
-          const wavBase64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64
-          });
-          const wavBuffer = Buffer.from(wavBase64, 'base64');
-
-          if (wavBuffer.length > 44) {
-            const pcmBuffer = wavBuffer.slice(44);
-            const totalPcmBytes = pcmBuffer.length;
-
-            if (totalPcmBytes > micBytesSent && !isMuted) {
-              const newPcm = pcmBuffer.slice(micBytesSent);
-              micBytesSent = totalPcmBytes;
-
-              const pcmBase64 = newPcm.toString('base64');
-
-              if (!startMicCapture._chunkCount) startMicCapture._chunkCount = 0;
-              startMicCapture._chunkCount++;
-              if (startMicCapture._chunkCount <= 3 || startMicCapture._chunkCount % 20 === 0) {
-                console.log('[GrokVoice] Mic chunk sent:', startMicCapture._chunkCount, {
-                  newBytes: newPcm.length,
-                  totalBytes: totalPcmBytes
-                });
-              }
-
-              activeSocket.send(JSON.stringify({
-                type: 'input_audio_buffer.append',
-                audio: pcmBase64
-              }));
-            }
+          if (!startMicCapture._chunkCount) startMicCapture._chunkCount = 0;
+          startMicCapture._chunkCount++;
+          if (startMicCapture._chunkCount <= 3 || startMicCapture._chunkCount % 10 === 0) {
+            console.log('[GrokVoice] Mic chunk sent:', startMicCapture._chunkCount, { pcmBytes: pcmBuffer.length });
           }
+
+          activeSocket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcmBase64 }));
         }
-      } catch (err) {
-        console.log('[GrokVoice] Poll error:', err.message);
       }
+    } catch (err) {
+      console.log('[GrokVoice] Chunk error:', err.message);
+    }
 
-      if (micActive) {
-        setTimeout(pollAndSend, MIC_CHUNK_MS);
-      } else {
-        console.log('[GrokVoice] Mic poll ending');
-        await stopAndFinalizeRecording();
-      }
-    };
+    // Minimal gap before next chunk
+    if (micActive) {
+      setTimeout(sendChunk, 1);
+    }
+  };
 
-    setTimeout(pollAndSend, MIC_CHUNK_MS);
-  } catch (err) {
-    console.log('[GrokVoice] Mic capture failed:', err.message);
-    micActive = false;
-  }
-};
-
-const stopAndFinalizeRecording = async () => {
-  if (micRecording) {
-    try { await micRecording.stopAndUnloadAsync(); } catch {}
-    micRecording = null;
-  }
+  sendChunk();
 };
 
 const stopMicCapture = () => {
   micActive = false;
-  stopAndFinalizeRecording().catch(() => {});
 };
 
 export const sendGrokText = (text) => {
