@@ -29,9 +29,10 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
     ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
   }
 }
+
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'Emmaline Dev'
+rootProject.name = 'Emmaline'
 
 expoAutolinking.useExpoVersionCatalog()
 

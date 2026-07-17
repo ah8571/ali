@@ -81,17 +81,15 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
-apply from: new File(["node", "--print", "require('path').dirname(require.resolve('@sentry/react-native/package.json'))"].execute().text.trim(), "sentry.gradle")
-
 android {
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.emmaline.app.dev'
+    namespace 'com.emmaline.app'
     defaultConfig {
-        applicationId 'com.emmaline.app.dev'
+        applicationId 'com.emmaline.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -109,9 +107,12 @@ android {
     }
     buildTypes {
         debug {
+            applicationIdSuffix '.dev'
+            resValue "string", "app_name", "Emmaline Dev"
             signingConfig signingConfigs.debug
         }
         release {
+            resValue "string", "app_name", "Emmaline"
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug

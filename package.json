@@ -6,6 +6,7 @@
   "scripts": {
     "dev:backend": "npm --prefix backend run dev",
     "dev:mobile": "npm --prefix mobile start",
+    "build:mobile:dev": "npm --prefix mobile run build:dev",
     "build:backend": "npm --prefix backend run build",
     "lint": "npm --prefix backend run lint && npm --prefix mobile run lint"
   }

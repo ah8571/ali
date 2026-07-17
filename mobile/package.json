@@ -29,6 +29,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "build:dev": "eas build --profile development --platform android",
     "web": "expo start --web",
     "eject": "expo eject",
     "test": "jest",
