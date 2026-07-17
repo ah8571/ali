@@ -1,5 +1,7 @@
 import crypto from 'crypto';
-import { HmacSHA256 } from 'crypto-js';
+import CryptoJS from 'crypto-js';
+
+const { HmacSHA256 } = CryptoJS;
 
 const INWORLD_API_KEY = process.env.INWORLD_API_KEY || '';
 const INWORLD_HOST = process.env.INWORLD_HOST || 'api.inworld.ai';
