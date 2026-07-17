@@ -8,7 +8,11 @@
 
 ## Start reaching out to influencers about live streaming with the product
 
+## Perhaps start working on viral dance videos... 
 
+## Keep working through app upgrades
+
+how can we make a "Language learning" zone, how could we incorporate flashcards, how can people upload a text for the assistant to read and translate with them in real time
 
 
 ## AppsFlyer:

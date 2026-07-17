@@ -93,7 +93,7 @@ const AppContent = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [callActivityState, setCallActivityState] = useState('idle');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [appError, setAppError] = useState(null);
+  const [showLaunchSplash, setShowLaunchSplash] = useState(true);
   const [voiceProvider, setVoiceProvider] = useState('openai');
   const [grokTextInput, setGrokTextInput] = useState('');
   const [listenModeState, setListenModeState] = useState('idle');
@@ -107,22 +107,6 @@ const AppContent = () => {
 
   const colors = isDarkMode ? darkColors : lightColors;
   const appBottomRailHeight = Math.max(insets.bottom, 12) + APP_BOTTOM_RAIL_HEIGHT;
-
-  // Catch unhandled errors so they're visible instead of a white screen
-  useEffect(() => {
-    const handler = (event) => {
-      console.error('[App] Unhandled error:', event?.error?.message || event);
-      setAppError(event?.error?.message || String(event));
-    };
-    const sub = ErrorUtils?.getGlobalHandler?.();
-    if (ErrorUtils?.setGlobalHandler) {
-      ErrorUtils.setGlobalHandler((error, isFatal) => {
-        console.error('[App] Global error:', error?.message || error, { isFatal });
-        setAppError(error?.message || String(error));
-      });
-    }
-    return () => {};
-  }, []);
 
   const resetLiveCallTrace = () => {
     liveCallTraceRef.current = {
@@ -246,6 +230,14 @@ const AppContent = () => {
         console.error('[AppsFlyer] init failed', error);
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const splashTimer = setTimeout(() => {
+      setShowLaunchSplash(false);
+    }, 900);
+
+    return () => clearTimeout(splashTimer);
   }, []);
 
   useEffect(() => {
@@ -745,13 +737,12 @@ const AppContent = () => {
       return (order[left.type] ?? 99) - (order[right.type] ?? 99);
     });
 
-  if (appError) {
+  if (showLaunchSplash) {
     return (
       <AppThemeProvider value={{ isDarkMode, colors, toggleTheme: handleToggleTheme }}>
-        <View style={[styles.splashScreen, { padding: 32 }]}>
-          <Text style={[styles.splashLabel, { color: '#ff4444', fontSize: 16, textAlign: 'center' }]}>
-            Startup Error{'\n\n'}{appError}
-          </Text>
+        <View style={styles.splashScreen}>
+          <Image source={require('../assets/white-outline-favicon.png')} style={styles.splashIcon} resizeMode="contain" />
+          <Text style={styles.splashLabel}>Emmaline</Text>
         </View>
       </AppThemeProvider>
     );
