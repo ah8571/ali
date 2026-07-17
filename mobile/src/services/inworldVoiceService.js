@@ -225,7 +225,10 @@ export const startInworldVoiceCall = async ({
     onTrace?.('inworld_session_request_started');
 
     // Connect through our backend WebSocket proxy (backend handles JWT + Inworld auth)
-    const backendWsUrl = API_BASE_URL.replace(/^http/, 'ws') + '/ws/inworld';
+    // In dev, always use localhost regardless of EXPO_PUBLIC_API_URL
+    const backendWsUrl = __DEV__
+      ? 'ws://127.0.0.1:3000/api/ws/inworld'
+      : API_BASE_URL.replace(/^http/, 'ws') + '/ws/inworld';
 
     onTrace?.('inworld_websocket_connecting');
 
