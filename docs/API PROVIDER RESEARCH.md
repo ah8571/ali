@@ -100,15 +100,17 @@ Compare providers on:
 Rename product thinking from live call to voice mode.
 
 Recommended evaluation order:
-1. OpenAI direct (current implementation — WebRTC)
-2. xAI Grok direct (WebSocket — API-compatible, ~half the cost)
+1. OpenAI Realtime API (current implementation — WebRTC)
+2. xAI Grok Voice Agent API (WebSocket — API-compatible, ~half the cost)
 3. Inworld
 5. Gemini 3.1 Flash Live 
-4. Retell benchmark
-5. Vapi benchmark
+5. Azure Voice Live api: https://azure.microsoft.com/en-us/pricing/details/speech/
+6. Amazon Nova Sonic (Listed on livekit)
+7. NVIDIA PersonaPlex (Listed on livekit)
+8. Phonic Speech-to-speech (Listed on livekit)
+9. Ultravox Realtime (open-source)
 
-
-### B. Natural Voices (solo)
+### B. Natural Voices (TTS)
 Recommended evaluation order:
 1. ElevenLabs
 Alternatives to Elevanlabs
@@ -122,9 +124,8 @@ Alternatives to Elevanlabs
 4. Nova 2.0 Sonic
 
 ### Multi-lingual assistance
-1. Openai real time
 2. Elevanlabs [supposedly?]
-3. Inworld
+
 
 ### C. Real-Time Transcription
 Recommended evaluation order:
@@ -203,7 +204,7 @@ Best future Twilio use cases:
 - **Docs:** https://docs.livekit.io/
 - **Voice AI quickstart:** https://docs.livekit.io/agents/start/voice-ai/
 - **Gemini plugin:** https://docs.livekit.io/agents/models/realtime/plugins/gemini/
-- **Grok/xAI integration:** https://docs.livekit.io/agents/integrations/xai/
+- **Grok/xAI integration:** https://docs.livekit.io/agents/integrations/xai/; https://docs.livekit.io/agents/models/realtime/plugins/xai/
 - **Pricing:** LiveKit Cloud free tier available; paid plans scale with usage. Self-host open-source option.
 - **Role:** Open-source WebRTC platform — acts as middleware between mobile SDK and AI model backends
 - **Value proposition:**
@@ -225,7 +226,7 @@ Best future Twilio use cases:
 - **API reference:** https://docs.inworld.ai/api-reference/introduction
 - **Pricing:** https://inworld.ai/pricing
 - **Models (Realtime Router):** https://inworld.ai/models
-- **Real-time API:** https://inworld.ai/realtime-api
+- **Real-time API:** https://docs.inworld.ai/realtime/overview
 - **Pricing breakdown (per-minute estimate):**
   - Realtime TTS-2: $9–25 per 1M characters (~$0.009–0.025/min at ~1000 chars/min)
   - Realtime STT 1: $0.10–0.15 per hour (~$0.0017–0.0025/min)

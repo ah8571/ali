@@ -341,6 +341,8 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Voice Mode voice</Text>
         <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>Choose which OpenAI realtime voice Emmaline should use when speaking back.</Text>
 
+        <Text style={[styles.providerSubheader, { color: colors.mutedText }]}>OpenAI Voices</Text>
+
         {VOICE_OPTIONS.map((option) => {
           const selected = callVoice === option.value;
 
@@ -481,6 +483,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6c757d',
     lineHeight: 20
+  },
+  providerSubheader: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 12,
+    marginBottom: 8
   },
   infoCard: {
     backgroundColor: '#ffffff',
