@@ -90,8 +90,25 @@ END $$;
 -- 5. Row-level security for credit_transactions
 ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "users_read_own_credits" ON public.credit_transactions
-  FOR SELECT USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'credit_transactions'
+      AND policyname = 'users_read_own_credits'
+  ) THEN
+    CREATE POLICY "users_read_own_credits" ON public.credit_transactions
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "service_insert_credits" ON public.credit_transactions
-  FOR INSERT WITH CHECK (true);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'credit_transactions'
+      AND policyname = 'service_insert_credits'
+  ) THEN
+    CREATE POLICY "service_insert_credits" ON public.credit_transactions
+      FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
