@@ -17,6 +17,7 @@ let onTrace = null;
 let callStartedAtMs = null;
 let audioBuffers = [];
 let playbackSound = null;
+let nextPlaybackSound = null;
 let responseInProgress = false;
 let micActive = false;
 let activePcmSession = null;
@@ -147,29 +148,43 @@ const playNextBufferedSegment = async () => {
   const nextSegment = playbackQueue.shift();
 
   try {
-    if (playbackSound) {
-      await playbackSound.unloadAsync().catch(() => {});
-      playbackSound = null;
+    // Preload: if we already have the next sound ready, swap it in immediately
+    if (nextPlaybackSound) {
+      if (playbackSound) {
+        await playbackSound.unloadAsync().catch(() => {});
+      }
+      playbackSound = nextPlaybackSound;
+      nextPlaybackSound = null;
+      await playbackSound.playAsync();
+    } else {
+      if (playbackSound) {
+        await playbackSound.unloadAsync().catch(() => {});
+        playbackSound = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: nextSegment.uri },
+        { shouldPlay: true }
+      );
+      playbackSound = sound;
     }
 
     console.log('[GrokVoice] Playing audio segment:', { pcmBytes: nextSegment.pcmBytes, queuedSegments: playbackQueue.length });
 
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: nextSegment.uri },
-      { shouldPlay: true }
-    );
+    // Preload the next segment while this one plays
+    if (playbackQueue.length > 0) {
+      const upcoming = playbackQueue[0];
+      Audio.Sound.createAsync({ uri: upcoming.uri }, { shouldPlay: false }).then(({ sound }) => {
+        nextPlaybackSound = sound;
+      }).catch(() => {});
+    }
 
-    playbackSound = sound;
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) {
-        return;
-      }
-
+    playbackSound.setOnPlaybackStatusUpdate((status) => {
+      if (!status.isLoaded) return;
       if (status.didJustFinish) {
-        sound.setOnPlaybackStatusUpdate(null);
+        playbackSound.setOnPlaybackStatusUpdate(null);
         playbackActive = false;
-        playNextBufferedSegment().catch((error) => {
-          console.error('[GrokVoice] Playback queue error:', error.message);
+        playNextBufferedSegment().catch((err) => {
+          console.error('[GrokVoice] Playback queue error:', err.message);
         });
       }
     });
@@ -454,6 +469,11 @@ const cleanupGrokCall = async () => {
   if (playbackSound) {
     try { await playbackSound.unloadAsync(); } catch {}
     playbackSound = null;
+  }
+
+  if (nextPlaybackSound) {
+    try { await nextPlaybackSound.unloadAsync(); } catch {}
+    nextPlaybackSound = null;
   }
 
   if (activeSocket) {
