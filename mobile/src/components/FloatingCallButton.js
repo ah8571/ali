@@ -44,6 +44,9 @@ const FloatingCallButton = ({
   const [orbScaleAnim] = React.useState(new Animated.Value(1));
   const [orbGlowAnim] = React.useState(new Animated.Value(0.18));
   const [spinAnim] = React.useState(new Animated.Value(0));
+  const [coreSwirlAnim] = React.useState(new Animated.Value(0));
+  const [breathingAnim] = React.useState(new Animated.Value(1));
+  const [innerSwirlAnim] = React.useState(new Animated.Value(0));
   const [isExpanded, setIsExpanded] = React.useState(true);
   const { colors, isDarkMode } = useAppTheme();
   const floatingBottom = Math.max(bottomInset, 12) + 16;
@@ -60,9 +63,40 @@ const FloatingCallButton = ({
   const orbMidColor = isDarkMode ? 'rgba(59, 130, 246, 0.20)' : 'rgba(59, 130, 246, 0.12)';
   const orbOuterColor = isDarkMode ? 'rgba(59, 130, 246, 0.06)' : 'rgba(59, 130, 246, 0.04)';
 
+  // Gradient colors for ethereal atmosphere effect
+  const coreGradientColors = [
+    'rgba(96, 165, 250, 0.9)',  // Bright blue center
+    'rgba(59, 130, 246, 0.7)',   // Medium blue
+    'rgba(37, 99, 235, 0.5)',   // Deep blue
+    'rgba(30, 64, 175, 0.3)',   // Dark blue
+    'rgba(30, 64, 175, 0)'      // Transparent edge
+  ];
+
+  const ringGradientColors = [
+    'rgba(59, 130, 246, 0.4)',   // Blue with opacity
+    'rgba(37, 99, 235, 0.2)',   // Fading blue
+    'rgba(30, 64, 175, 0.1)',   // Subtle blue
+    'rgba(30, 64, 175, 0)'      // Transparent
+  ];
+
   const spinInterpolation = spinAnim.interpolate({
     inputRange: [0, 360],
     outputRange: ['0deg', '360deg']
+  });
+
+  const coreSwirlInterpolation = coreSwirlAnim.interpolate({
+    inputRange: [0, 360],
+    outputRange: ['0deg', '360deg']
+  });
+
+  const innerSwirlInterpolation = innerSwirlAnim.interpolate({
+    inputRange: [0, 360],
+    outputRange: ['360deg', '0deg']
+  });
+
+  const breathingInterpolation = breathingAnim.interpolate({
+    inputRange: [0.9, 1, 1.1],
+    outputRange: [0.8, 1, 1.2]
   });
 
   React.useEffect(() => {
@@ -77,6 +111,9 @@ const FloatingCallButton = ({
       orbGlowAnim.stopAnimation();
       orbScaleAnim.setValue(1);
       orbGlowAnim.setValue(0.18);
+      coreSwirlAnim.setValue(0);
+      innerSwirlAnim.setValue(0);
+      breathingAnim.setValue(1);
       return undefined;
     }
 
@@ -95,6 +132,28 @@ const FloatingCallButton = ({
           ? 0.24
           : 0.2;
     const duration = callActivityState === 'speaking' ? 620 : callActivityState === 'connecting' ? 960 : 760;
+
+    // Breathing effect with irregular timing
+    const breathingLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathingAnim, { 
+          toValue: 1.1, 
+          duration: callActivityState === 'speaking' ? 800 : 1200, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(breathingAnim, { 
+          toValue: 0.9, 
+          duration: callActivityState === 'speaking' ? 600 : 1000, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(breathingAnim, { 
+          toValue: 1, 
+          duration: callActivityState === 'speaking' ? 400 : 800, 
+          useNativeDriver: true 
+        })
+      ])
+    );
+
     const orbLoop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -108,14 +167,17 @@ const FloatingCallButton = ({
       ])
     );
 
+    breathingLoop.start();
     orbLoop.start();
 
     return () => {
+      breathingLoop.stop();
       orbLoop.stop();
       orbScaleAnim.stopAnimation();
       orbGlowAnim.stopAnimation();
+      breathingAnim.stopAnimation();
     };
-  }, [callActivityState, isExpanded, orbGlowAnim, orbScaleAnim, showCallControls]);
+  }, [callActivityState, isExpanded, orbGlowAnim, orbScaleAnim, showCallControls, breathingAnim]);
 
   React.useEffect(() => {
     if (!showCallControls || !isExpanded) {
@@ -130,12 +192,34 @@ const FloatingCallButton = ({
       })
     );
 
+    // Core swirl animation - faster when AI is speaking
+    const coreSwirlLoop = Animated.loop(
+      Animated.timing(coreSwirlAnim, {
+        toValue: 360,
+        duration: callActivityState === 'speaking' ? 3000 : callActivityState === 'listening' ? 6000 : 8000,
+        useNativeDriver: true
+      })
+    );
+
+    // Inner counter-swirl for depth effect
+    const innerSwirlLoop = Animated.loop(
+      Animated.timing(innerSwirlAnim, {
+        toValue: 360,
+        duration: callActivityState === 'speaking' ? 2000 : callActivityState === 'listening' ? 4000 : 5000,
+        useNativeDriver: true
+      })
+    );
+
     spinLoop.start();
+    coreSwirlLoop.start();
+    innerSwirlLoop.start();
 
     return () => {
       spinLoop.stop();
+      coreSwirlLoop.stop();
+      innerSwirlLoop.stop();
     };
-  }, [callActivityState, isExpanded, showCallControls, spinAnim]);
+  }, [callActivityState, isExpanded, showCallControls, spinAnim, coreSwirlAnim, innerSwirlAnim]);
 
   const liveCallPrompt = React.useMemo(() => {
     if (!showCallControls) {
@@ -234,10 +318,37 @@ const FloatingCallButton = ({
                   styles.orbCore,
                   {
                     backgroundColor: orbCoreColor,
-                    transform: [{ scale: Animated.add(1, Animated.divide(Animated.subtract(orbScaleAnim, 1), 4)) }]
+                    transform: [
+                      { scale: Animated.multiply(breathingInterpolation, Animated.add(1, Animated.divide(Animated.subtract(orbScaleAnim, 1), 4))) },
+                      { rotate: coreSwirlInterpolation }
+                    ],
+                    shadowColor: '#60a5fa',
+                    shadowOpacity: 0.6,
+                    shadowRadius: 15,
+                    shadowOffset: { width: 0, height: 0 }
                   }
                 ]}
-              />
+              >
+                {/* Inner swirl layer for "blue air" effect */}
+                <Animated.View
+                  style={[
+                    styles.innerSwirl,
+                    {
+                      transform: [{ rotate: innerSwirlInterpolation }],
+                      opacity: 0.6
+                    }
+                  ]}
+                />
+                {/* Core gradient overlay */}
+                <View style={[
+                  styles.coreGradient,
+                  {
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(96, 165, 250, 0.3)',
+                    borderWidth: 1
+                  }
+                ]} />
+              </Animated.View>
 
               {liveCallPrompt ? (
                 <View style={styles.liveCallPromptWrap} pointerEvents="none">
@@ -554,7 +665,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.32,
     shadowRadius: 32,
-    elevation: 12
+    elevation: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  innerSwirl: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: 'rgba(147, 197, 253, 0.4)',
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent'
+  },
+  coreGradient: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: 'transparent'
   },
   liveCallFooter: {
     flexDirection: 'row',
