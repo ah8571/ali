@@ -9,7 +9,6 @@ import { API_BASE_URL, createNote, getNote, getNotes, updateNote } from './api.j
 
 const INWORLD_PROVIDER = 'inworld-voice';
 const DEFAULT_INWORLD_VOICE = 'Sarah';
-const DEFAULT_TTS_MODEL = 'inworld-tts-1.5-mini'; // cheapest option at ~$5/1M chars
 const DEFAULT_INWORLD_LANGUAGE = 'en-US';
 
 // Sarah voice supports: English, Arabic, German, Spanish, Japanese, Korean, Portuguese, Russian, Chinese
@@ -176,13 +175,21 @@ export const startInworldVoiceCall = async ({
       onTrace?.('inworld_datachannel_open');
 
       const llmModel = modelId || 'openai/gpt-4o-mini';
+      const isEnglish = languageHint === 'en' || languageHint === 'en-US';
+
+      // TTS-2 for multilingual (cross-lingual switching + proper accents)
+      // TTS 1.5 Mini for English-only (cheapest)
+      const ttsModel = isEnglish ? 'inworld-tts-1.5-mini' : 'inworld-tts-2';
+      const instructions = isEnglish
+        ? 'You can use your note tools only when the user explicitly asks. Keep responses brief and natural.'
+        : `You are a multilingual assistant. Speak in ${languageHint} with a native accent. You can use your note tools only when the user explicitly asks. Keep responses brief and natural.`;
 
       dataChannel.send(JSON.stringify({
         type: 'session.update',
         session: {
           type: 'realtime',
           model: llmModel,
-          instructions: 'You can use your note tools only when the user explicitly asks. Keep responses brief and natural.',
+          instructions,
           output_modalities: ['audio', 'text'],
           audio: {
             input: {
@@ -195,7 +202,7 @@ export const startInworldVoiceCall = async ({
             },
             output: {
               voice: inworldVoice,
-              model: DEFAULT_TTS_MODEL
+              model: ttsModel
             }
           },
           tools: NOTE_TOOLS,
@@ -209,14 +216,14 @@ export const startInworldVoiceCall = async ({
               vad_threshold: 0.5
             },
             tts: {
-              segmenter_strategy: 'sentence',
-              language: languageHint
+              segmenter_strategy: 'sentence'
+              // Don't lock TTS to a single language — let the model switch naturally
             }
           }
         }
       }));
 
-      console.log('[InworldVoice] WebRTC session configured:', { voice: inworldVoice, model: llmModel, language: languageHint });
+      console.log('[InworldVoice] WebRTC session configured:', { voice: inworldVoice, model: llmModel, tts: ttsModel, language: languageHint });
     };
 
     dataChannel.onmessage = (event) => {
