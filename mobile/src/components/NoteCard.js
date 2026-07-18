@@ -38,12 +38,6 @@ const NoteCard = ({ note, onPress, onLongPress, noteTextScale = 1, isSelected = 
         <Text style={[styles.cardDate, { color: colors.mutedText, fontSize: 11.5 * noteTextScale }]}>{formatDate(note.updatedAt || note.createdAt)}</Text>
       </View>
 
-      {selectionMode ? (
-        <Text style={[styles.selectionLabel, { color: isSelected ? colors.text : colors.mutedText }]}>
-          {isSelected ? 'Selected' : 'Tap to select'}
-        </Text>
-      ) : null}
-      
       <Text style={[styles.cardContent, { color: colors.mutedText, fontSize: 13 * noteTextScale, lineHeight: 18 * noteTextScale }]} numberOfLines={2}>
         {previewText}
       </Text>
@@ -87,13 +81,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#495057',
     lineHeight: 18
-  },
-  selectionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3
   }
 });
 

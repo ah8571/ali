@@ -237,7 +237,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const renderListHeader = () => (
     <>
       <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>{selectedNoteIds.length > 0 ? `${selectedNoteIds.length} selected` : 'Notes'}</Text>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Notes</Text>
         <View style={styles.headerActions}>
           {selectedNoteIds.length > 0 ? (
             <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedNotes}>
