@@ -376,20 +376,21 @@ const executeToolCall = async (msg) => {
   try {
     switch (name) {
       case 'list_notes': {
-        const notes = await getNotes(null, 50, 0);
-        result = JSON.stringify(notes && notes.data ? notes.data : []);
+        const response = await getNotes(null, 50, 0);
+        result = JSON.stringify(response?.notes || []);
         break;
       }
       case 'read_note': {
         if (args.noteId) {
-          const note = await getNote(args.noteId);
-          result = JSON.stringify(note || {});
+          const response = await getNote(args.noteId);
+          result = JSON.stringify(response?.note || {});
         } else if (args.title) {
-          const notes = await getNotes(null, 50, 0);
-          const found = (notes?.data || []).find(n => (n.title || '').toLowerCase() === String(args.title).toLowerCase());
+          const notesResponse = await getNotes(null, 50, 0);
+          const notes = notesResponse?.notes || [];
+          const found = notes.find(n => (n.title || '').toLowerCase() === String(args.title).toLowerCase());
           if (found) {
-            const note = await getNote(found.id);
-            result = JSON.stringify(note || found);
+            const noteResponse = await getNote(found.id);
+            result = JSON.stringify(noteResponse?.note || found);
           } else {
             result = JSON.stringify({ error: 'No note found with that title.' });
           }
@@ -398,11 +399,11 @@ const executeToolCall = async (msg) => {
       }
       case 'save_note': {
         if (args.noteId) {
-          const updated = await updateNote(args.noteId, { title: args.title, content: args.content });
-          result = JSON.stringify(updated || { success: true });
+          const response = await updateNote(args.noteId, { title: args.title, content: args.content });
+          result = JSON.stringify(response?.note || { success: true });
         } else {
-          const created = await createNote({ title: args.title, content: args.content });
-          result = JSON.stringify(created || { success: true });
+          const response = await createNote({ title: args.title, content: args.content });
+          result = JSON.stringify(response?.note || { success: true });
         }
         break;
       }
