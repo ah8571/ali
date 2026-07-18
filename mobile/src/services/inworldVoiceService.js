@@ -182,8 +182,8 @@ export const startInworldVoiceCall = async ({
       // Always use TTS-2 for cross-lingual switching (core feature: bilingual tutor)
       const ttsModel = 'inworld-tts-2';
       const instructions = isEnglish
-        ? 'You can use your note tools only when the user explicitly asks. Keep responses brief and natural.'
-        : `You are a bilingual tutor. Teach and converse naturally, switching between English and ${languageHint} as appropriate for a language-learning conversation. Speak in ${languageHint} with a native accent when using that language, and in English when explaining or clarifying. You can use your note tools only when the user explicitly asks.`;
+        ? 'You can use your note tools only when the user explicitly asks. Keep responses brief and natural. If the user switches to another language, match that language with its correct native accent.'
+        : `You are a bilingual language tutor. Always use the correct native accent for each language — never speak ${languageHint} with an English accent. Switch naturally between English (your native accent) and ${languageHint} (native ${languageHint} accent) as appropriate for teaching. Explain grammar and vocabulary in English, demonstrate pronunciation in ${languageHint}. You can use your note tools only when the user explicitly asks.`;
 
       dataChannel.send(JSON.stringify({
         type: 'session.update',
