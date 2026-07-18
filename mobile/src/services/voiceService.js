@@ -98,8 +98,7 @@ export const setOnNotesChanged = (callback) => {
 
 const audioRoutes = [
   { uuid: 'speaker', type: 'speaker', name: 'Speaker' },
-  { uuid: 'earpiece', type: 'earpiece', name: 'Phone' },
-  { uuid: 'bluetooth', type: 'bluetooth', name: 'Bluetooth' }
+  { uuid: 'earpiece', type: 'earpiece', name: 'Phone' }
 ];
 
 const muteListeners = new Set();

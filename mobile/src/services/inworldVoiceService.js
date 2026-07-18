@@ -52,8 +52,7 @@ const NOTE_TOOLS = [
 
 const speakerRoute = { uuid: 'speaker', type: 'speaker', name: 'Speaker' };
 const earpieceRoute = { uuid: 'earpiece', type: 'earpiece', name: 'Phone' };
-const bluetoothRoute = { uuid: 'bluetooth', type: 'bluetooth', name: 'Bluetooth' };
-const audioRoutes = [speakerRoute, earpieceRoute, bluetoothRoute];
+const audioRoutes = [speakerRoute, earpieceRoute];
 let selectedAudioRoute = speakerRoute;
 
 const audioDeviceListeners = new Set();
@@ -378,33 +377,41 @@ const executeToolCall = async (msg) => {
     switch (name) {
       case 'list_notes': {
         const response = await getNotes(null, 50, 0);
-        result = JSON.stringify(response?.notes || []);
+        result = JSON.stringify(response?.success !== false ? (response?.notes || []) : { error: 'Failed to list notes.' });
         break;
       }
       case 'read_note': {
         if (args.noteId) {
           const response = await getNote(args.noteId);
-          result = JSON.stringify(response?.note || {});
+          result = JSON.stringify(response?.success !== false ? (response?.note || {}) : { error: 'Note not found.' });
         } else if (args.title) {
           const notesResponse = await getNotes(null, 50, 0);
-          const notes = notesResponse?.notes || [];
-          const found = notes.find(n => (n.title || '').toLowerCase() === String(args.title).toLowerCase());
+          const notes = notesResponse?.success !== false ? (notesResponse?.notes || []) : [];
+          const found = notes.find(n => (n.title || '').toLowerCase() === String(args.title || '').toLowerCase());
           if (found) {
             const noteResponse = await getNote(found.id);
             result = JSON.stringify(noteResponse?.note || found);
           } else {
-            result = JSON.stringify({ error: 'No note found with that title.' });
+            result = JSON.stringify({ error: `No note found with title "${args.title}".` });
           }
+        } else {
+          result = JSON.stringify({ error: 'Provide a noteId or title to read.' });
         }
         break;
       }
       case 'save_note': {
-        if (args.noteId) {
-          const response = await updateNote(args.noteId, { title: args.title, content: args.content });
-          result = JSON.stringify(response?.note || { success: true });
+        if (!args.title || !args.content) {
+          result = JSON.stringify({ error: 'Title and content are required.' });
+          break;
+        }
+        const response = args.noteId
+          ? await updateNote(args.noteId, { title: String(args.title), content: String(args.content) })
+          : await createNote({ title: String(args.title), content: String(args.content) });
+
+        if (response?.success === false) {
+          result = JSON.stringify({ error: response.error || 'Failed to save note.' });
         } else {
-          const response = await createNote({ title: args.title, content: args.content });
-          result = JSON.stringify(response?.note || { success: true });
+          result = JSON.stringify(response?.note || { id: 'new', title: args.title, saved: true });
         }
         break;
       }
