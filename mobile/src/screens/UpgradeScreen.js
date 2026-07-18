@@ -87,8 +87,8 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
     setIsProActive(isProEntitlementActive(customerInfo));
   };
 
-  const handleWebUpgrade = () => {
-    Linking.openURL('https://alihelp.tech/subscribe');
+  const handleWebUpgrade = (tier) => {
+    Linking.openURL(`https://alihelp.tech/subscribe?tier=${tier}`);
   };
     if (!offeringPackage) {
       Alert.alert('Subscription unavailable', revenueCatMessage || 'No subscription package is ready in this build yet.');
@@ -123,37 +123,16 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
       </View>
 
       <View style={styles.section}>
-        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.heroEyebrow, { color: colors.accent }]}>Ali Pro</Text>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {offeringPackage?.product?.priceString || '$9.99'} per month
-          </Text>
-
-          <Text style={[styles.helperText, { color: colors.mutedText }]}>
-            Subscribe on alihelp.tech for instant access. Apple IAP available below for one-off credit purchases.
-          </Text>
-
-          {/* Web upgrade — primary CTA */}
-          <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: colors.text }]}
-            onPress={handleWebUpgrade}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>
-              Upgrade
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.manageLink, { color: colors.mutedText }]}>
-            Manage subscription above
-          </Text>
-
-          <View style={styles.inlineBenefitsBlock}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>What Pro unlocks</Text>
-
+        {/* Weekly tier */}
+        <View style={[styles.tierCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}>
+          <Text style={[styles.tierEyebrow, { color: colors.accent }]}>Weekly</Text>
+          <Text style={[styles.tierPrice, { color: colors.text }]}>$X.99<Text style={styles.tierPeriod}> / week</Text></Text>
+          <View style={styles.tierBenefits}>
             {[
-              '100 credits per month, with unused credits rolling over.',
-              '20 min Voice Mode, 50 min Reader, or 100 min Listen Mode — mix and match.',
+              '100 credits per week',
+              '~20 min Voice Mode or 50 min Reader',
+              'Unused credits roll over',
+              'Cancel anytime'
             ].map((item) => (
               <View key={item} style={styles.bulletRow}>
                 <Text style={[styles.bulletMark, { color: colors.text }]}>•</Text>
@@ -161,39 +140,44 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
               </View>
             ))}
           </View>
-
-          <View style={[styles.subscriptionDetails, { borderTopColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Subscription details</Text>
-            <Text style={[styles.subscriptionDetail, { color: colors.mutedText }]}>
-              Ali Pro · Monthly · {offeringPackage?.product?.priceString || '$9.99'}
-            </Text>
-            <Text style={[styles.subscriptionDetail, { color: colors.mutedText }]}>
-              Auto-renewing. Cancel anytime from alihelp.tech.
-            </Text>
-            <View style={styles.legalLinks}>
-              <Text
-                style={[styles.legalLink, { color: colors.accent }]}
-                onPress={() => navigation.navigate('PrivacyPolicy')}
-              >
-                Privacy Policy
-              </Text>
-              <Text style={[styles.legalSeparator, { color: colors.mutedText }]}>·</Text>
-              <Text
-                style={[styles.legalLink, { color: colors.accent }]}
-                onPress={() => navigation.navigate('TermsOfService')}
-              >
-                Terms of Use
-              </Text>
-              <Text style={[styles.legalSeparator, { color: colors.mutedText }]}>·</Text>
-              <Text
-                style={[styles.legalLink, { color: colors.accent }]}
-                onPress={() => navigation.navigate('EULA')}
-              >
-                EULA
-              </Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            style={[styles.upgradeButton, { backgroundColor: colors.text }]}
+            onPress={() => handleWebUpgrade('weekly')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>Upgrade</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Monthly tier */}
+        <View style={[styles.tierCard, { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 2 }]}>
+          <Text style={[styles.tierEyebrow, { color: colors.accent }]}>Monthly · Best value</Text>
+          <Text style={[styles.tierPrice, { color: colors.text }]}>$X.99<Text style={styles.tierPeriod}> / month</Text></Text>
+          <View style={styles.tierBenefits}>
+            {[
+              '500 credits per month',
+              '~100 min Voice Mode or 250 min Reader',
+              'Unused credits roll over',
+              'Cancel anytime'
+            ].map((item) => (
+              <View key={item} style={styles.bulletRow}>
+                <Text style={[styles.bulletMark, { color: colors.text }]}>•</Text>
+                <Text style={[styles.bulletText, { color: colors.mutedText }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.upgradeButton, { backgroundColor: colors.text }]}
+            onPress={() => handleWebUpgrade('monthly')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>Upgrade</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.manageLink, { color: colors.mutedText, marginTop: 8 }]}>
+          Manage subscription above
+        </Text>
       </View>
 
       {/* Apple IAP — one-off credit purchase for compliance */}
@@ -382,6 +366,34 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '700'
+  },
+  tierCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 24
+  },
+  tierEyebrow: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4
+  },
+  tierPrice: {
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: 16
+  },
+  tierPeriod: {
+    fontSize: 16,
+    fontWeight: '400'
+  },
+  tierBenefits: {
+    marginBottom: 16
+  },
+  manageLink: {
+    fontSize: 13,
+    textAlign: 'center'
   },
   heroDescription: {
     fontSize: designTokens.typography.body,
