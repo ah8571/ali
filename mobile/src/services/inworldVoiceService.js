@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { Audio } from 'expo-av';
 import InCallManager from 'react-native-incall-manager';
 import {
   mediaDevices,
@@ -520,10 +521,14 @@ export const selectInworldAudioDevice = async (deviceUuid) => {
   try {
     if (deviceUuid === 'speaker') {
       InCallManager.setSpeakerphoneOn(true);
-    } else {
-      // Phone and Bluetooth both use speakerphone off.
-      // InCallManager auto-routes to Bluetooth when a BT device is connected.
+      await Audio.setAudioModeAsync({ shouldRouteToBluetooth: false, playThroughEarpieceAndroid: false });
+    } else if (deviceUuid === 'bluetooth') {
       InCallManager.setSpeakerphoneOn(false);
+      await Audio.setAudioModeAsync({ shouldRouteToBluetooth: true, playThroughEarpieceAndroid: false });
+    } else {
+      // Phone (earpiece)
+      InCallManager.setSpeakerphoneOn(false);
+      await Audio.setAudioModeAsync({ shouldRouteToBluetooth: false, playThroughEarpieceAndroid: true });
     }
   } catch {}
 
