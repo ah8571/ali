@@ -11,8 +11,8 @@ const INWORLD_PROVIDER = 'inworld-voice';
 const DEFAULT_INWORLD_VOICE = 'Sarah';
 const DEFAULT_INWORLD_LANGUAGE = 'en-US';
 
-// Sarah voice supports: English, Arabic, German, Spanish, Japanese, Korean, Portuguese, Russian, Chinese
-const SARAH_LANGUAGES = ['en', 'ar', 'de', 'es', 'ja', 'ko', 'pt', 'ru', 'zh'];
+// Sarah & Jason: en, es, ar, de, it, ja, ko, pt, ru, zh (10 languages)
+// Roy Mustang: en, it (2 languages)
 
 const NOTE_TOOLS = [
   {
@@ -88,6 +88,7 @@ const normalizeInworldLanguage = (value) => {
   // Map to Sarah's 8 supported languages (plus English)
   if (normalized.startsWith('ar')) return 'ar';
   if (normalized.startsWith('de')) return 'de';
+  if (normalized.startsWith('it')) return 'it';
   if (normalized.startsWith('es')) return 'es';
   if (normalized.startsWith('ja')) return 'ja';
   if (normalized.startsWith('ko')) return 'ko';
@@ -98,7 +99,8 @@ const normalizeInworldLanguage = (value) => {
   return DEFAULT_INWORLD_LANGUAGE;
 };
 
-const INWORLD_VOICES = ['Sarah', 'Jason', 'Hana', 'Blake', 'Mark', 'Hades', 'Reed', 'Levi', 'Luna', 'Victor', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede', 'Clive', 'Liam'];
+// Voice-language mapping (used for validation)
+const INWORLD_VOICES = ['Sarah', 'Jason', 'Roy Mustang'];
 
 const normalizeInworldVoice = (openAiVoice) => {
   // Inworld voices are different from OpenAI. Map common choices or default to Clive.
@@ -177,12 +179,11 @@ export const startInworldVoiceCall = async ({
       const llmModel = modelId || 'openai/gpt-4o-mini';
       const isEnglish = languageHint === 'en' || languageHint === 'en-US';
 
-      // TTS-2 for multilingual (cross-lingual switching + proper accents)
-      // TTS 1.5 Mini for English-only (cheapest)
-      const ttsModel = isEnglish ? 'inworld-tts-1.5-mini' : 'inworld-tts-2';
+      // Always use TTS-2 for cross-lingual switching (core feature: bilingual tutor)
+      const ttsModel = 'inworld-tts-2';
       const instructions = isEnglish
         ? 'You can use your note tools only when the user explicitly asks. Keep responses brief and natural.'
-        : `You are a multilingual assistant. Speak in ${languageHint} with a native accent. You can use your note tools only when the user explicitly asks. Keep responses brief and natural.`;
+        : `You are a bilingual tutor. Teach and converse naturally, switching between English and ${languageHint} as appropriate for a language-learning conversation. Speak in ${languageHint} with a native accent when using that language, and in English when explaining or clarifying. You can use your note tools only when the user explicitly asks.`;
 
       dataChannel.send(JSON.stringify({
         type: 'session.update',

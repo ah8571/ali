@@ -13,51 +13,16 @@ import {
 import { useAppTheme } from '../theme/appTheme.js';
 
 const LANGUAGE_OPTIONS = [
-  {
-    value: 'en',
-    title: 'English',
-    description: 'Use English as the primary language.'
-  },
-  {
-    value: 'es',
-    title: 'Spanish',
-    description: 'Use Spanish as the primary language.'
-  },
-  {
-    value: 'ar',
-    title: 'Arabic',
-    description: 'Use Arabic as the primary language.'
-  },
-  {
-    value: 'de',
-    title: 'German',
-    description: 'Use German as the primary language.'
-  },
-  {
-    value: 'ja',
-    title: 'Japanese',
-    description: 'Use Japanese as the primary language.'
-  },
-  {
-    value: 'ko',
-    title: 'Korean',
-    description: 'Use Korean as the primary language.'
-  },
-  {
-    value: 'pt',
-    title: 'Portuguese',
-    description: 'Use Portuguese as the primary language.'
-  },
-  {
-    value: 'ru',
-    title: 'Russian',
-    description: 'Use Russian as the primary language.'
-  },
-  {
-    value: 'zh',
-    title: 'Mandarin Chinese',
-    description: 'Use Mandarin Chinese as the primary language.'
-  }
+  { value: 'en', title: 'English', description: 'Use English as the primary language.' },
+  { value: 'es', title: 'Spanish', description: 'Use Spanish as the primary language.' },
+  { value: 'ar', title: 'Arabic', description: 'Use Arabic as the primary language.' },
+  { value: 'de', title: 'German', description: 'Use German as the primary language.' },
+  { value: 'it', title: 'Italian', description: 'Use Italian as the primary language.' },
+  { value: 'ja', title: 'Japanese', description: 'Use Japanese as the primary language.' },
+  { value: 'ko', title: 'Korean', description: 'Use Korean as the primary language.' },
+  { value: 'pt', title: 'Portuguese', description: 'Use Portuguese as the primary language.' },
+  { value: 'ru', title: 'Russian', description: 'Use Russian as the primary language.' },
+  { value: 'zh', title: 'Mandarin Chinese', description: 'Use Mandarin Chinese as the primary language.' }
 ];
 
 
@@ -118,12 +83,20 @@ const INWORLD_VOICE_OPTIONS = [
   {
     value: 'Sarah',
     title: 'Sarah',
-    description: 'Female US English voice. Supports 8 languages including Spanish, Arabic, Japanese, and more.'
+    description: 'Female US English. Speaks 10 languages.',
+    languages: ['en', 'es', 'ar', 'de', 'it', 'ja', 'ko', 'pt', 'ru', 'zh']
   },
   {
     value: 'Jason',
     title: 'Jason',
-    description: 'Male US English voice. Same 8-language support as Sarah.'
+    description: 'Male US English. Speaks 10 languages.',
+    languages: ['en', 'es', 'ar', 'de', 'it', 'ja', 'ko', 'pt', 'ru', 'zh']
+  },
+  {
+    value: 'Roy Mustang',
+    title: 'Roy Mustang',
+    description: 'Male voice. Speaks English and Italian.',
+    languages: ['en', 'it']
   }
 ];
 
@@ -394,11 +367,11 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Inworld Voice</Text>
-        <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>Choose which voice Inworld should use when speaking back. Sarah and Jason both support 8 languages.</Text>
+        <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>Choose which voice Inworld uses. Only voices that speak your selected language are shown.</Text>
 
         <Text style={[styles.providerSubheader, { color: colors.mutedText }]}>Inworld Voices</Text>
 
-        {INWORLD_VOICE_OPTIONS.map((option) => {
+        {INWORLD_VOICE_OPTIONS.filter(opt => opt.languages.includes(callLanguage)).map((option) => {
           const selected = inworldVoice === option.value;
 
           return (
