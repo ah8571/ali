@@ -204,11 +204,6 @@ const TranscriptScreen = ({ navigation, onAppHeaderScroll }) => {
         </View>
         <Text style={[styles.duration, { color: colors.mutedText }]}>{item.callDurationSeconds}s</Text>
       </View>
-      {selectedTranscriptIds.length > 0 ? (
-        <Text style={[styles.selectionLabel, { color: selectedTranscriptIds.includes(item.id) ? colors.text : colors.mutedText }]}>
-          {selectedTranscriptIds.includes(item.id) ? 'Selected' : 'Tap to select'}
-        </Text>
-      ) : null}
       <Text style={[styles.preview, { color: colors.mutedText }]} numberOfLines={2}>
         {item.summary || item.fullTranscript?.substring(0, 100) || 'No transcript'}
       </Text>
@@ -223,16 +218,11 @@ const TranscriptScreen = ({ navigation, onAppHeaderScroll }) => {
 
   const renderListHeader = () => (
     <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-      <Text style={[styles.pageTitle, { color: colors.text }]}>{selectedTranscriptIds.length > 0 ? `${selectedTranscriptIds.length} selected` : 'Transcripts'}</Text>
+      <Text style={[styles.pageTitle, { color: colors.text }]}>Transcripts</Text>
       <View style={styles.headerActions}>
         {selectedTranscriptIds.length > 0 ? (
           <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedTranscripts}>
             <Feather name="trash-2" size={20} color={colors.text} />
-          </TouchableOpacity>
-        ) : null}
-        {selectedTranscriptIds.length > 0 ? (
-          <TouchableOpacity style={styles.doneButton} onPress={() => setSelectedTranscriptIds([])}>
-            <Text style={[styles.doneButtonText, { color: colors.text }]}>Done</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -292,14 +282,6 @@ const styles = StyleSheet.create({
   iconButton: {
     paddingHorizontal: 6,
     paddingVertical: 6
-  },
-  doneButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 4
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: '600'
   },
   pageTitle: {
     fontSize: designTokens.typography.pageTitle,
@@ -363,13 +345,6 @@ const styles = StyleSheet.create({
     fontSize: designTokens.typography.bodySmall,
     color: '#495057',
     lineHeight: 18
-  },
-  selectionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3
   },
   emptyState: {
     flex: 1,
