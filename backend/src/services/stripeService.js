@@ -37,7 +37,7 @@ export const verifyStripeWebhook = (rawBody, signature) => {
   }
 };
 
-export const createStripeCheckout = async (userId, email, tierKey, successUrl, cancelUrl) => {
+export const createStripeCheckout = async (userId, email, tierKey, successUrl, cancelUrl, promoCode = null) => {
   if (!stripe) throw new Error('Stripe is not configured.');
 
   const tier = STRIPE_TIERS[tierKey];
@@ -45,16 +45,38 @@ export const createStripeCheckout = async (userId, email, tierKey, successUrl, c
     throw new Error(`Unknown tier: ${tierKey}`);
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const sessionConfig = {
     mode: 'subscription',
     line_items: [{ price: tier.priceId, quantity: 1 }],
     customer_email: email,
     client_reference_id: userId,
-    metadata: { userId, tier: tierKey },
+    metadata: { userId, tier: tierKey, promoCode: promoCode || '' },
     success_url: successUrl || 'https://alihelp.tech/subscribe/success',
     cancel_url: cancelUrl || 'https://alihelp.tech/subscribe',
     allow_promotion_codes: true
-  });
+  };
+
+  // If a specific promo code was provided, apply it as a discount
+  if (promoCode) {
+    try {
+      // Look up the coupon in Stripe
+      const coupons = await stripe.coupons.list({ limit: 1 });
+      const matchingCode = await stripe.promotionCodes.list({
+        code: promoCode,
+        active: true,
+        limit: 1
+      });
+
+      if (matchingCode.data.length > 0) {
+        sessionConfig.discounts = [{ coupon: matchingCode.data[0].coupon.id }];
+      }
+    } catch (err) {
+      console.warn('[Stripe] Could not apply promo code:', promoCode, err.message);
+      // Continue without discount — user can enter it on Stripe's checkout page
+    }
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionConfig);
 
   return { checkoutUrl: session.url, checkoutId: session.id };
 };

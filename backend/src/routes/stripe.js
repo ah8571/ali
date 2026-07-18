@@ -82,6 +82,35 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   }
 });
 
+// Website subscribe redirect — GET for browser redirect flow
+router.get('/subscribe', async (req, res) => {
+  try {
+    const { tier, code, email } = req.query || {};
+
+    if (!tier || !STRIPE_TIERS[tier]) {
+      return res.redirect('https://alihelp.tech/subscribe?error=invalid_tier');
+    }
+
+    const result = await createStripeCheckout(
+      `web_${Date.now()}`,
+      email || null,
+      tier,
+      'https://alihelp.tech/subscribe/success',
+      'https://alihelp.tech/subscribe',
+      code || null
+    );
+
+    if (result.checkoutUrl) {
+      return res.redirect(result.checkoutUrl);
+    }
+
+    return res.redirect('https://alihelp.tech/subscribe?error=checkout_failed');
+  } catch (error) {
+    console.error('[Stripe] Subscribe redirect error:', error.message);
+    return res.redirect('https://alihelp.tech/subscribe?error=unavailable');
+  }
+});
+
 // Create checkout session
 router.post('/checkout', async (req, res) => {
   try {

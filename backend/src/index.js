@@ -113,6 +113,7 @@ app.use('/api/voice/grok', grokVoiceRoutes);
 app.use('/api/voice/gemini', geminiVoiceRoutes);
 app.use('/api/voice/inworld', inworldVoiceRoutes);
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/subscribe', stripeRoutes); // alias for website redirect flow
 app.use('/api/promo', promoRoutes);
 
 app.use('/calls', callRoutes);
