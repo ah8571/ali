@@ -15,6 +15,24 @@ export const getWeeklyTierForProduct = (productId) => {
   return WEEKLY_TIER_CONFIG[productId] || null;
 };
 
+export const getStripeProStatus = async (userId) => {
+  if (!userId) return { isProActive: false };
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('user_billing_entitlements')
+    .select('stripe_status, stripe_tier, is_pro_active')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) return { isProActive: false };
+
+  return {
+    isProActive: data.stripe_status === 'active' && data.is_pro_active === true,
+    tier: data.stripe_tier || null
+  };
+};
+
 export const getPaddleProStatus = async (userId) => {
   if (!userId) return { isProActive: false };
 
@@ -34,28 +52,28 @@ export const getPaddleProStatus = async (userId) => {
 };
 
 export const getUserVoiceBillingStatus = async (userId) => {
-  const [billingProfile, revenueCatStatus, creditStatus, paddleStatus] = await Promise.all([
+  const [billingProfile, revenueCatStatus, creditStatus, stripeStatus] = await Promise.all([
     getUserBillingProfile(userId).catch(() => ({})),
     getRevenueCatProStatus(userId).catch(() => ({})),
     getUserCreditStatus(userId).catch(() => ({})),
-    getPaddleProStatus(userId).catch(() => ({}))
+    getStripeProStatus(userId).catch(() => ({}))
   ]);
 
   const hasRevenueCatProAccess = Boolean(revenueCatStatus?.isProActive);
-  const hasPaddleProAccess = Boolean(paddleStatus?.isProActive);
+  const hasStripeProAccess = Boolean(stripeStatus?.isProActive);
   const hasCredits = (creditStatus.creditBalance || 0) > 0;
-  const hasVoiceAccess = hasRevenueCatProAccess || hasPaddleProAccess || hasCredits;
+  const hasVoiceAccess = hasRevenueCatProAccess || hasStripeProAccess || hasCredits;
 
   const billingState = hasRevenueCatProAccess
     ? 'pro_iap'
-    : hasPaddleProAccess
-      ? 'pro_paddle'
+    : hasStripeProAccess
+      ? 'pro_stripe'
       : billingProfile?.billing_state || 'trial';
 
   const voiceAccessSource = hasRevenueCatProAccess
     ? 'apple_iap'
-    : hasPaddleProAccess
-      ? 'paddle'
+    : hasStripeProAccess
+      ? 'stripe'
       : hasCredits
         ? 'credits'
         : 'none';
@@ -69,9 +87,9 @@ export const getUserVoiceBillingStatus = async (userId) => {
     creditBalance: creditStatus.creditBalance || 0,
     freeCreditsGranted: creditStatus.freeCreditsGranted || 0,
     monthlyCreditAllocation: creditStatus.monthlyCreditAllocation || 0,
-    paddle: {
-      active: hasPaddleProAccess,
-      tier: paddleStatus?.tier || null
+    stripe: {
+      active: hasStripeProAccess,
+      tier: stripeStatus?.tier || null
     },
     revenueCat: {
       configured: Boolean(revenueCatStatus?.configured),

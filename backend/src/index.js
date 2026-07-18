@@ -23,7 +23,7 @@ import voiceRoutes from './routes/voice.js';
 import grokVoiceRoutes from './routes/grokVoice.js';
 import geminiVoiceRoutes from './routes/geminiVoice.js';
 import inworldVoiceRoutes from './routes/inworldVoice.js';
-import paddleRoutes from './routes/paddle.js';
+import stripeRoutes from './routes/stripe.js';
 
 // Import middleware
 import { errorHandler, requestLogger } from './middleware/index.js';
@@ -111,7 +111,7 @@ app.use('/api/voice', voiceRoutes);
 app.use('/api/voice/grok', grokVoiceRoutes);
 app.use('/api/voice/gemini', geminiVoiceRoutes);
 app.use('/api/voice/inworld', inworldVoiceRoutes);
-app.use('/api/paddle', paddleRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 app.use('/calls', callRoutes);
 app.use('/notes', noteRoutes);
@@ -125,7 +125,7 @@ app.use('/voice', voiceRoutes);
 app.use('/voice/grok', grokVoiceRoutes);
 app.use('/voice/gemini', geminiVoiceRoutes);
 app.use('/voice/inworld', inworldVoiceRoutes);
-app.use('/paddle', paddleRoutes);
+app.use('/stripe', stripeRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
