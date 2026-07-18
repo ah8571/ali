@@ -519,17 +519,21 @@ export const selectInworldAudioDevice = async (deviceUuid) => {
   selectedAudioRoute = device;
 
   try {
+    console.log('[InworldVoice] Switching audio to:', deviceUuid);
     if (deviceUuid === 'speaker') {
       await Audio.setAudioModeAsync({ shouldRouteToBluetooth: false, playThroughEarpieceAndroid: false });
       InCallManager.setSpeakerphoneOn(true);
     } else if (deviceUuid === 'bluetooth') {
+      console.log('[InworldVoice] Enabling Bluetooth routing...');
       await Audio.setAudioModeAsync({ shouldRouteToBluetooth: true, playThroughEarpieceAndroid: false });
       InCallManager.setSpeakerphoneOn(false);
     } else {
       await Audio.setAudioModeAsync({ shouldRouteToBluetooth: false, playThroughEarpieceAndroid: true });
       InCallManager.setSpeakerphoneOn(false);
     }
-  } catch {}
+  } catch (err) {
+    console.error('[InworldVoice] Audio switch error:', err.message);
+  }
 
   emitAudioDevices();
   return { success: true };

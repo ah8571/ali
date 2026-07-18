@@ -678,12 +678,6 @@ export const selectAudioDevice = async (deviceUuid) => {
       await Audio.setAudioModeAsync({ shouldRouteToBluetooth: false });
       InCallManager.setSpeakerphoneOn(false);
     }
-  } catch {}
-
-  return {
-    success: true,
-    selectedDevice: selectedAudioRoute
-  };
   } catch (error) {
     return {
       success: false,
