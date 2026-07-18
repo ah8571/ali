@@ -1,6 +1,7 @@
 import express from 'express';
 import { verifyStripeWebhook, createStripeCheckout, cancelStripeSubscription, STRIPE_TIERS } from '../services/stripeService.js';
 import { ensureCreditEntitlement, getSupabaseClient } from '../services/databaseService.js';
+import { validatePromoCode, redeemPromoCode } from '../services/promoService.js';
 
 const router = express.Router();
 
@@ -42,6 +43,17 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
           if (credits > 0) {
             await ensureCreditEntitlement(userId, credits, `stripe_${tier}`);
+          }
+
+          // Grant bonus credits if a promo code was used at checkout
+          const couponCode = session?.discounts?.[0]?.coupon?.name
+            || session?.total_details?.discounts?.[0]?.coupon?.name;
+
+          if (couponCode) {
+            const promoResult = await redeemPromoCode(userId, couponCode).catch(() => null);
+            if (promoResult?.success) {
+              console.log(`[Stripe] Bonus ${promoResult.creditsGranted} credits from promo: ${couponCode}`);
+            }
           }
         }
         break;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getBillingStatus } from '../services/api.js';
 import {
@@ -87,7 +87,9 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
     setIsProActive(isProEntitlementActive(customerInfo));
   };
 
-  const handleUpgradePress = async () => {
+  const handleWebUpgrade = () => {
+    Linking.openURL('https://alihelp.tech/subscribe');
+  };
     if (!offeringPackage) {
       Alert.alert('Subscription unavailable', revenueCatMessage || 'No subscription package is ready in this build yet.');
       return;
@@ -122,31 +124,29 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
 
       <View style={styles.section}>
         <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.heroEyebrow, { color: colors.accent }]}>Emmaline Pro</Text>
+          <Text style={[styles.heroEyebrow, { color: colors.accent }]}>Ali Pro</Text>
           <Text style={[styles.heroTitle, { color: colors.text }]}>
             {offeringPackage?.product?.priceString || '$9.99'} per month
           </Text>
 
-          {revenueCatMessage ? (
-            <Text style={[styles.helperText, { color: colors.mutedText }]}>{revenueCatMessage}</Text>
-          ) : null}
+          <Text style={[styles.helperText, { color: colors.mutedText }]}>
+            Subscribe on alihelp.tech for instant access. Apple IAP available below for one-off credit purchases.
+          </Text>
 
-          <View style={[styles.statusBadge, { backgroundColor: isProActive ? colors.chipSelectedBg : colors.surfaceAlt, borderColor: colors.border }]}>
-            <Text style={[styles.statusBadgeText, { color: isProActive ? colors.chipSelectedText : colors.mutedText }]}>
-              {isProActive ? 'Pro active on this account' : offeringsLoading ? 'Loading subscription details...' : 'Upgrade available'}
-            </Text>
-          </View>
-
+          {/* Web upgrade — primary CTA */}
           <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: colors.text }, (purchaseLoading || offeringsLoading || !offeringPackage) && styles.buttonDisabled]}
-            onPress={handleUpgradePress}
-            disabled={purchaseLoading || offeringsLoading || !offeringPackage}
+            style={[styles.upgradeButton, { backgroundColor: colors.text }]}
+            onPress={handleWebUpgrade}
             activeOpacity={0.85}
           >
             <Text style={[styles.upgradeButtonText, { color: colors.surface }]}>
-              {purchaseLoading ? 'Processing purchase...' : isProActive ? 'Manage Pro access in store account' : 'Upgrade to Pro'}
+              Upgrade on alihelp.tech
             </Text>
           </TouchableOpacity>
+
+          <Text style={[styles.manageLink, { color: colors.mutedText }]}>
+            Manage your subscription at alihelp.tech
+          </Text>
 
           <View style={styles.inlineBenefitsBlock}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>What Pro unlocks</Text>
@@ -165,10 +165,10 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           <View style={[styles.subscriptionDetails, { borderTopColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Subscription details</Text>
             <Text style={[styles.subscriptionDetail, { color: colors.mutedText }]}>
-              Emmaline Pro · Monthly · {offeringPackage?.product?.priceString || '$9.99'}
+              Ali Pro · Monthly · {offeringPackage?.product?.priceString || '$9.99'}
             </Text>
             <Text style={[styles.subscriptionDetail, { color: colors.mutedText }]}>
-              Auto-renewing subscription. Cancel anytime.
+              Auto-renewing. Cancel anytime from alihelp.tech.
             </Text>
             <View style={styles.legalLinks}>
               <Text
@@ -195,6 +195,28 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           </View>
         </View>
       </View>
+
+      {/* Apple IAP — one-off credit purchase for compliance */}
+      {offeringPackage ? (
+        <View style={styles.section}>
+          <View style={[styles.usageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.usageTitle, { color: colors.text }]}>Need more credits?</Text>
+            <Text style={[styles.helperText, { color: colors.mutedText, marginBottom: 12 }]}>
+              One-time credit purchase via App Store.
+            </Text>
+            <TouchableOpacity
+              style={[styles.upgradeButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1 }, purchaseLoading && styles.buttonDisabled]}
+              onPress={handleUpgradePress}
+              disabled={purchaseLoading}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.upgradeButtonText, { color: colors.text }]}>
+                {purchaseLoading ? 'Processing...' : `Purchase credits — ${offeringPackage?.product?.priceString || '$9.99'}`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <View style={[styles.usageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
