@@ -24,6 +24,7 @@ import grokVoiceRoutes from './routes/grokVoice.js';
 import geminiVoiceRoutes from './routes/geminiVoice.js';
 import inworldVoiceRoutes from './routes/inworldVoice.js';
 import stripeRoutes from './routes/stripe.js';
+import promoRoutes from './routes/promo.js';
 
 // Import middleware
 import { errorHandler, requestLogger } from './middleware/index.js';
@@ -112,6 +113,7 @@ app.use('/api/voice/grok', grokVoiceRoutes);
 app.use('/api/voice/gemini', geminiVoiceRoutes);
 app.use('/api/voice/inworld', inworldVoiceRoutes);
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/promo', promoRoutes);
 
 app.use('/calls', callRoutes);
 app.use('/notes', noteRoutes);
@@ -126,6 +128,7 @@ app.use('/voice/grok', grokVoiceRoutes);
 app.use('/voice/gemini', geminiVoiceRoutes);
 app.use('/voice/inworld', inworldVoiceRoutes);
 app.use('/stripe', stripeRoutes);
+app.use('/promo', promoRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
