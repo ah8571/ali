@@ -173,7 +173,7 @@ server.listen(PORT, () => {
   const googleCloudStatus = getGoogleCloudConfigStatus();
   const supabaseDebug = getSupabaseDebugInfo();
 
-  console.log(`🚀 Emmaline backend running on port ${PORT}`);
+  console.log(`🚀 ali backend running on port ${PORT}`);
   websocketRoutes.forEach(({ path }) => {
     console.log(`📡 WebSocket server listening at wss://localhost:${PORT}${path}`);
   });

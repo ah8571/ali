@@ -17,12 +17,12 @@ type ComparisonPageProps = {
 };
 
 function getBaseSlug(slug: string) {
-  return slug.endsWith('-vs-emmaline') ? slug.slice(0, -'-vs-emmaline'.length) : slug;
+  return slug.endsWith('-vs-ali') ? slug.slice(0, -'-vs-ali'.length) : slug;
 }
 
 export function generateStaticParams() {
   return consumerCompetitorSlugs.map((slug) => ({
-    slug: `${slug}-vs-emmaline`,
+    slug: `${slug}-vs-ali`,
   }));
 }
 
@@ -61,7 +61,7 @@ export default function ComparisonPage({ params }: ComparisonPageProps) {
     { id: 'pricing-and-access', label: 'Pricing and access' },
     { id: 'review-signal', label: 'Review signal' },
     { id: 'reddit-signal', label: 'Reddit signal' },
-    { id: 'emmaline-difference', label: 'Where ali is different' },
+    { id: 'ali-difference', label: 'Where ali is different' },
     { id: 'best-fit', label: 'Best fit by user type' },
     { id: 'related-reads', label: 'Related reads' },
   ];
@@ -133,9 +133,9 @@ export default function ComparisonPage({ params }: ComparisonPageProps) {
         </p>
       </section>
 
-      <section id="emmaline-difference" className="space-y-4">
+      <section id="ali-difference" className="space-y-4">
         <h2 className="text-2xl font-semibold md:text-3xl">Where ali is different</h2>
-        <p className="leading-8 text-white/70">{competitor.emmalineAngle}</p>
+        <p className="leading-8 text-white/70">{competitor.aliAngle}</p>
         <p className="leading-8 text-white/60">
           {isCallAnnie
             ? 'The strongest alternative angle is not that ali recreates a discontinued app one-for-one. It is that ali can keep the low-friction call-first mental model while adding a note-friendly workflow: call in, think out loud, brainstorm in real time, and keep the useful parts through transcripts, call detail, and notes.'
@@ -191,7 +191,7 @@ export default function ComparisonPage({ params }: ComparisonPageProps) {
           {relatedComparisons.map((entry) => (
             <Link
               key={entry.slug}
-              href={`/compare/${entry.slug}-vs-emmaline`}
+              href={`/compare/${entry.slug}-vs-ali`}
               className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]"
             >
               <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>

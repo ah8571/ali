@@ -27,7 +27,7 @@ export type ConsumerCompetitor = {
   verdict: string;
   strengths: string[];
   limits: string[];
-  emmalineAngle: string;
+  aliAngle: string;
   reviewTitle?: string;
   reviewSummary?: string;
 };
@@ -89,7 +89,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Breadth can make it feel less purpose-built for recurring phone-style routines',
       'More like a universal AI app than a durable assistant identity',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can differentiate by narrowing the workflow: call the assistant, think out loud, capture useful notes, and make the interaction feel closer to a dedicated phone assistant than a general AI app.',
   },
   {
@@ -152,7 +152,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Not positioned around a dedicated AI phone number or call ritual',
       'Still feels closer to an ecosystem layer than a focused phone companion',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can position itself as a cleaner, call-first alternative for users who want conversation capture and a dedicated assistant relationship instead of another broad platform surface.',
   },
   {
@@ -207,7 +207,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Utility is secondary to relationship framing',
       'Companion positioning will not fit users seeking a lighter executive-assistant feel',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can stay grounded in practical voice work: call in, rehearse, brainstorm, capture notes, and leave with something useful instead of only nurturing the relationship itself.',
   },
   {
@@ -266,7 +266,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Less associated with a dedicated phone-number model',
       'Can feel emotionally fluent before it feels operationally useful',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can compete by treating the phone call as the product center: real-time conversation in, structured notes and assistant continuity out.',
   },
   {
@@ -321,7 +321,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Not naturally positioned as a phone assistant',
       'Entertainment framing weakens its fit for real-world conversation help',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can own the grounded lane: real conversations, note capture, and everyday help without turning the assistant into a character marketplace.',
   },
   {
@@ -392,7 +392,7 @@ export const consumerCompetitors: ConsumerCompetitor[] = [
       'Category awareness is now stronger than product continuity',
       'Hard to recommend as a long-term assistant foundation today',
     ],
-    emmalineAngle:
+    aliAngle:
       'ali can position itself as the modern follow-on for users who still want the simple call-an-AI feeling, but need a product that is current, note-friendly, and built to grow.',
     reviewTitle: 'Call Annie Review: What To Look For In An AI Phone Assistant Alternative',
     reviewSummary:

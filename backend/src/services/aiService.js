@@ -296,7 +296,7 @@ Return strict JSON with keys:
 
 export const generateStructuredNoteDocument = async (options = {}) => {
   const prompt = `
-You are writing a durable working note for Emmaline.
+You are writing a durable working note for ali.
 
 House style for notes:
 - Use HTML for storage, not markdown.

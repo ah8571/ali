@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const APP_CALLBACK_URL = 'emmaline://auth/callback';
+const APP_CALLBACK_URL = 'ali://auth/callback';
 
 const buildAppRedirectUrl = () => {
   const params = new URLSearchParams(window.location.search);

@@ -10,7 +10,7 @@ const SUPABASE_STORAGE_KEY = 'emmaline_supabase_session';
 const SUPABASE_STORAGE_WARNING_THRESHOLD = 1800;
 const OAUTH_REDIRECT_PATH = 'auth/callback';
 const OAUTH_BROWSER_REDIRECT_URL = String(
-  process.env.EXPO_PUBLIC_OAUTH_BROWSER_REDIRECT_URL || 'https://emmaline.app/auth/callback'
+  process.env.EXPO_PUBLIC_OAUTH_BROWSER_REDIRECT_URL || 'https://alihelp.tech/auth/callback'
 ).trim();
 
 const isConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -266,7 +266,7 @@ export const signInWithIdToken = async ({ provider, idToken }) => {
 };
 
 export const getOAuthRedirectUrl = () => AuthSession.makeRedirectUri({
-  scheme: 'emmaline',
+  scheme: 'ali',
   path: OAUTH_REDIRECT_PATH
 });
 
@@ -275,11 +275,11 @@ export const getOAuthBrowserRedirectUrl = () => OAUTH_BROWSER_REDIRECT_URL;
 export const isOAuthRedirectUrl = (redirectUrl) => {
   const urlString = String(redirectUrl || '').trim().toLowerCase();
 
-  if (!urlString.startsWith('emmaline://')) {
+  if (!urlString.startsWith('ali://')) {
     return false;
   }
 
-  return urlString.startsWith('emmaline://auth') || urlString.startsWith(getOAuthRedirectUrl().toLowerCase());
+  return urlString.startsWith('ali://auth') || urlString.startsWith(getOAuthRedirectUrl().toLowerCase());
 };
 
 export const startOAuthSignIn = async ({ provider, scopes, queryParams } = {}) => {

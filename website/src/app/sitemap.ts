@@ -21,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const comparisonRoutes: MetadataRoute.Sitemap = consumerCompetitorSlugs.map((slug) => ({
-    url: `${baseUrl}/compare/${slug}-vs-emmaline`,
+    url: `${baseUrl}/compare/${slug}-vs-ali`,
     lastModified: new Date(),
     changeFrequency: 'monthly',
     priority: 0.8,

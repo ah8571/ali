@@ -52,11 +52,11 @@ const SupportScreen = () => {
       if (!supportInboxSent || !confirmationSent) {
         const fallbackMessage = !supportInboxSent
           ? 'Your request was saved, but support email delivery is not fully configured yet. Please also email support@alihelp.tech so we do not miss it.'
-          : 'Your request was saved, but the confirmation email could not be sent. If you do not hear back, email support@emmaline.app directly.';
+          : 'Your request was saved, but the confirmation email could not be sent. If you do not hear back, email support@alihelp.tech directly.';
 
         Alert.alert('Support request saved', fallbackMessage);
       } else {
-        Alert.alert('Support request sent', 'We have received your message at support@emmaline.app.');
+        Alert.alert('Support request sent', 'We have received your message at support@alihelp.tech.');
       }
 
       setSubject('');

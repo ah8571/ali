@@ -212,7 +212,7 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete account',
-      'This will permanently remove your Emmaline account and the account-linked transcripts, notes, and related records stored for that account. This cannot be undone.',
+      'This will permanently remove your ali account and the account-linked transcripts, notes, and related records stored for that account. This cannot be undone.',
       [
         {
           text: 'Cancel',
@@ -229,7 +229,7 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
               return;
             }
 
-            Alert.alert('Account deleted', 'Your Emmaline account has been removed.');
+            Alert.alert('Account deleted', 'Your ali account has been removed.');
             onAccountDeleted?.();
           }
         }
@@ -279,7 +279,7 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
           <View style={styles.infoCardCopy}>
             <Text style={[styles.infoCardTitle, { color: colors.text }]}>Voice access</Text>
             <Text style={[styles.infoCardDescription, { color: colors.mutedText }]}>
-              {billingSummary.isProActive ? 'Emmaline Pro is active on this account.' : 'Free trial included, then monthly subscription for continued access.'}
+              {billingSummary.isProActive ? 'ali Pro is active on this account.' : 'Free trial included, then monthly subscription for continued access.'}
             </Text>
             <Text style={[styles.billingFootnote, { color: colors.mutedText }]}>
               {billingSummary.loading
@@ -298,7 +298,7 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Call language</Text>
         <Text style={[styles.sectionDescription, { color: colors.mutedText }]}>
-          Choose the primary language Emmaline should expect on live voice calls. Users can still mix languages, but this sets the dedicated assistant language. Listen Mode is still the place for saved transcripts.
+          Choose the primary language ali should expect on live voice calls. Users can still mix languages, but this sets the dedicated assistant language. Listen Mode is still the place for saved transcripts.
         </Text>
 
         {LANGUAGE_OPTIONS.map((option) => {

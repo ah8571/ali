@@ -27,7 +27,7 @@ export default function BestAiPhoneAssistantPage() {
   const toc = [
     { id: 'methodology', label: 'What this guide compares' },
     { id: 'platforms', label: 'Platforms compared in this guide' },
-    { id: 'why-emmaline', label: 'Why ali can still stand out' },
+    { id: 'why-ali', label: 'Why ali can still stand out' },
     { id: 'cluster', label: 'Continue this cluster' },
   ];
 
@@ -53,7 +53,7 @@ export default function BestAiPhoneAssistantPage() {
         <div className="grid gap-6">
           {consumerCompetitors.map((competitor) => {
             const comparisonHref = comparisonSlugs.has(competitor.slug)
-              ? `/compare/${competitor.slug}-vs-emmaline`
+              ? `/compare/${competitor.slug}-vs-ali`
               : undefined;
 
             return (
@@ -97,7 +97,7 @@ export default function BestAiPhoneAssistantPage() {
         </div>
       </section>
 
-      <section id="why-emmaline" className="space-y-4">
+      <section id="why-ali" className="space-y-4">
         <h2 className="text-2xl font-semibold md:text-3xl">Why ali can still be differentiated</h2>
         <p className="text-base leading-8 text-white/70 md:text-lg">
           The opportunity is not to out-generalize ChatGPT or out-ecosystem Google. The opportunity is to feel more dedicated: a voice-first assistant with a phone-native experience, a clearer identity, and note-friendly workflows that turn spoken thought into something usable.
@@ -110,27 +110,27 @@ export default function BestAiPhoneAssistantPage() {
       <section id="cluster" className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
         <h2 className="text-2xl font-semibold md:text-3xl">Continue this cluster</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Link href="/compare/chatgpt-voice-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/chatgpt-voice-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">ChatGPT Voice vs ali</p>
           </Link>
-          <Link href="/compare/gemini-live-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/gemini-live-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">Gemini Live vs ali</p>
           </Link>
-          <Link href="/compare/replika-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/replika-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">Replika vs ali</p>
           </Link>
-          <Link href="/compare/pi-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/pi-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">Pi vs ali</p>
           </Link>
-          <Link href="/compare/character-ai-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/character-ai-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">Character.AI Voice vs ali</p>
           </Link>
-          <Link href="/compare/call-annie-vs-emmaline" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
+          <Link href="/compare/call-annie-vs-ali" className="rounded-2xl border border-white/10 p-4 transition hover:border-white/30 hover:bg-white/[0.04]">
             <p className="text-sm uppercase tracking-[0.16em] text-white/45">Comparison</p>
             <p className="mt-2 text-lg font-semibold text-white">Call Annie vs ali</p>
           </Link>
