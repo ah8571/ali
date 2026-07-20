@@ -770,6 +770,65 @@ export const saveUserPhoneNumber = async (userId, phoneNumberData) => {
   return data;
 };
 
+export const ensureCreditEntitlement = async (userId, creditsToAdd, reason) => {
+  const supabase = getSupabaseClient();
+  const amount = Math.max(0, Math.round(Number(creditsToAdd || 0)));
+
+  if (!amount) {
+    console.warn('[CreditEntitlement] No credits to add for', userId, reason);
+    return { updatedBalance: null };
+  }
+
+  // Fetch current balance
+  const { data: user, error: fetchError } = await supabase
+    .from('users')
+    .select('credit_balance')
+    .eq('id', userId)
+    .single();
+
+  if (fetchError) {
+    console.error('[CreditEntitlement] Fetch error:', fetchError.message);
+    throw fetchError;
+  }
+
+  const currentBalance = Number(user?.credit_balance || 0);
+  const newBalance = currentBalance + amount;
+
+  // Update balance
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({
+      credit_balance: newBalance,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', userId);
+
+  if (updateError) {
+    console.error('[CreditEntitlement] Update error:', updateError.message);
+    throw updateError;
+  }
+
+  // Record transaction
+  await supabase
+    .from('credit_transactions')
+    .insert({
+      user_id: userId,
+      type: 'adjustment',
+      credits: amount,
+      balance_after: newBalance,
+      source: 'purchase',
+      metadata: { reason: reason || 'entitlement_grant' },
+      created_at: new Date().toISOString()
+    })
+    .catch((err) => {
+      console.error('[CreditEntitlement] Transaction record error:', err.message);
+    });
+
+  console.log(`[CreditEntitlement] Granted ${amount} credits to ${userId} (${reason}) — new balance: ${newBalance}`);
+
+  return { updatedBalance: newBalance };
+};
+
 export const markUserPhoneNumberReleased = async (userId) => {
   const { data, error } = await supabase
     .from('user_phone_numbers')
@@ -792,6 +851,7 @@ export const markUserPhoneNumberReleased = async (userId) => {
 
 export default {
   getSupabaseClient,
+  ensureCreditEntitlement,
   saveCall,
   saveTranscript,
   saveCallMessages,
