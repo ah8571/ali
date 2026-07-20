@@ -1,17 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const TIERS = {
   weekly: { label: 'Weekly', price: '$X.99', credits: 100, period: 'week' },
   monthly: { label: 'Monthly', price: '$X.99', credits: 500, period: 'month' }
-};
+} as const;
 
-export default function SubscribePage() {
+type TierKey = keyof typeof TIERS;
+
+function SubscribeForm() {
   const searchParams = useSearchParams();
-  const defaultTier = searchParams.get('tier') === 'monthly' ? 'monthly' : 'weekly';
-  const [tier, setTier] = useState(defaultTier);
+  const defaultTier: TierKey = searchParams.get('tier') === 'monthly' ? 'monthly' : 'weekly';
+  const [tier, setTier] = useState<TierKey>(defaultTier);
   const [promoCode, setPromoCode] = useState('');
   const [error, setError] = useState('');
 
@@ -41,7 +43,7 @@ export default function SubscribePage() {
           {Object.entries(TIERS).map(([key, t]) => (
             <button
               key={key}
-              onClick={() => setTier(key)}
+              onClick={() => setTier(key as TierKey)}
               className={`px-6 py-3 rounded-xl border text-sm font-medium transition ${
                 tier === key
                   ? 'border-white bg-white text-black'
@@ -97,5 +99,13 @@ export default function SubscribePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SubscribePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading…</div>}>
+      <SubscribeForm />
+    </Suspense>
   );
 }

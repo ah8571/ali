@@ -1,6 +1,5 @@
 import SiteFooter from '../../../components/SiteFooter';
 import SiteHeader from '../../../components/SiteHeader';
-import Waitlist from '../../../components/Waitlist';
 
 type CreatorPageProps = {
   params: {
@@ -88,13 +87,8 @@ export default function CreatorLandingPage({ params }: CreatorPageProps) {
                 </p>
               </div>
 
-              <div className="mt-6">
-                <Waitlist
-                  source={`creator:${params.slug}`}
-                  consentSource="creator-landing"
-                  submitLabel="Get Early Access"
-                  successMessage={`✓ You're on the list from ${creatorName}. We'll send updates when access opens.`}
-                />
+              <div className="mt-6 text-center">
+                <p className="text-white/80">Signup form coming soon.</p>
               </div>
             </div>
           </div>

@@ -18,17 +18,15 @@ email: support@alihelp.tech
 [x] In-app branding — replaced "Emmaline" → "Ali" across mobile, backend, website (20+ files)
 [x] Legal content — mobile + shared legalContent.json updated with Ali branding + alihelp.tech email
 [x] Website — header, footer, SEO metadata, sitemap, robots all updated to alihelp.tech
-
-
-[ ] Website — emmaline.app would ideally redirect to ali.app (if you can get it). You'd update the Next.js site branding. Keep the old domain as a redirect.
+[ ] emmaline.app would ideally redirect to alihelp.tech (if you can get it). You'd update the Next.js site branding. Keep the old domain as a redirect.
 [ ] Google auth page
-[ ] Supabase — auth pages, or branded elements would need updating.
 [ ] RevenueCat — app identifier stays the same (bundle ID), so no migration. Just update the app name in their dashboard.
 [x] Email — support@emmaline.app → support@ali.app 
 [ ] Digital Ocean — droplet/app names are cosmetic, easy to rename. But if you use emmaline in any DNS/hostname config, those need updating.
-[ ] App Store review — a name change on an existing app is usually fine, but Apple occasionally flags dramatic rebrands. Having the same bundle ID helps.
-[ ] GitHub — repo can be renamed, GitHub redirects automatically.
+[x] GitHub — repo can be renamed, GitHub redirects automatically.
 [ ] API endpoints — api.emmaline.app would need to change or be aliased. If you keep the old domain as an alias, no mobile code changes needed.
+[ ] App Store review — a name change on an existing app is usually fine, but Apple occasionally flags dramatic rebrands. Having the same bundle ID helps.
+[ ] logins - several apps use support@emmaline.app, need to document [resemble.ai, ]
 
 ## Remodeling the subscription method 
 

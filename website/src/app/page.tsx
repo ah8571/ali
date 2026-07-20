@@ -70,23 +70,7 @@ export default function Home() {
               </a>
             </div>
           </div>
-                className="px-6 py-2 border border-white/30 rounded-lg text-white/50 cursor-not-allowed disabled:opacity-50"
-              >
-                App Store
-              </button>
-              <button 
-                disabled
-                className="px-6 py-2 border border-white/30 rounded-lg text-white/50 cursor-not-allowed disabled:opacity-50"
-              >
-                Google Play
-              </button>
-            </div>
-          </div>
 
-          {/* Stats */}
-          <div className="space-y-2 my-12 text-white/60 text-sm">
-            <p>Coming soon</p>
-          </div>
         </div>
       </div>
 
