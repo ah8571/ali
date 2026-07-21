@@ -20,15 +20,15 @@ oov.digital
 [x] Legal content — mobile + shared legalContent.json updated with Ali branding + alihelp.tech email
 [x] Website — header, footer, SEO metadata, sitemap, robots all updated to alihelp.tech
 [x] cloudflare / networking
-[ ] Google auth page
+[x] Google auth page - google reviewing
 [x] Email — support@emmaline.app → support@oov.digital
 [x] GitHub — repo renamed
-[ ] supabase auth urls
-[ ] add env variables in digital ocean
+[x] supabase auth urls
 [x] Digital Ocean — droplet/app names are cosmetic, easy to rename. But if you use emmaline in any DNS/hostname config, those need updating.
 [x] API endpoints — api.emmaline.app would need to change or be aliased. If you keep the old domain as an alias, no mobile code changes needed.
+[ ] add env variables in digital ocean
 [ ] App display name — changed in app.json?
-[ ] App Store review — a name change on an existing app is usually fine, but Apple occasionally flags dramatic rebrands. Having the same bundle ID helps.
+[ ] App Store review — a name change on an existing app is usually fine, but Apple occasionally flags dramatic rebrands. 
 [ ] unsubscribe from emmaline.app 
 [ ] logins - several apps use support@emmaline.app, need to document [resemble.ai, ]
 
