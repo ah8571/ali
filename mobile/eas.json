@@ -41,7 +41,8 @@
       },
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api"
+        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api",
+        "SENTRY_AUTH_TOKEN": "none"
       }
     }
   },
