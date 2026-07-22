@@ -2,8 +2,7 @@ import express from 'express';
 import authMiddleware from '../middleware/auth.js';
 import {
   getUserVoiceBillingStatus,
-  grantUserCredits,
-  getWeeklyTierForProduct
+  grantUserCredits
 } from '../services/billingService.js';
 import { getUserCreditStatus, grantFreeCredits } from '../services/creditService.js';
 
@@ -67,16 +66,17 @@ router.post('/grant-credits', authMiddleware, async (req, res) => {
 
 /**
  * POST /api/billing/revenuecat-webhook
- * Called by RevenueCat when a purchase is made. Grants monthly credits
- * (100 credits/month) for pro subscribers.
+ * Called by RevenueCat when an IAP purchase is made.
+ * Only handles one-time credit pack purchases (Apple compliance IAP).
+ * Stripe handles all subscription billing.
  */
 router.post('/revenuecat-webhook', async (req, res) => {
   try {
     const event = req.body?.event;
     const eventType = String(event?.type || '');
 
-    // Only process initial purchase and renewal events
-    if (eventType !== 'INITIAL_PURCHASE' && eventType !== 'RENEWAL') {
+    // Only process initial purchase events (credit packs are one-time, not renewable)
+    if (eventType !== 'INITIAL_PURCHASE') {
       return res.status(200).json({ acknowledged: true, reason: 'event_type_ignored' });
     }
 
@@ -87,29 +87,16 @@ router.post('/revenuecat-webhook', async (req, res) => {
       return res.status(400).json({ error: 'Missing app_user_id in RevenueCat event.' });
     }
 
-    // For the monthly pro product, grant 100 credits/month
-    if (productId === 'emmaline_pro_monthly') {
-      const { setMonthlyCreditAllocation } = await import('../services/creditService.js');
-      const result = await setMonthlyCreditAllocation(appUserId, 100);
-      console.log(`[Billing] Granted monthly credits (100) to user ${appUserId} via RevenueCat webhook. Renewed: ${result.renewed}`);
+    // One-time credit purchase (Apple IAP: IAP_credits, Google IAP: iap_credits)
+    if (productId === 'IAP_credits' || productId === 'iap_credits') {
+      await grantUserCredits(appUserId, 100);
+      console.log(`[Billing] Granted 100 one-time credits to user ${appUserId} via RevenueCat IAP (${productId})`);
 
       return res.status(200).json({
         acknowledged: true,
         product: productId,
-        monthlyCredits: 100,
-        renewed: result.renewed,
-        balance: result.balance
+        credits: 100
       });
-    }
-
-    // Legacy weekly tier fallback — convert seconds to credits at voice rate
-    const tier = getWeeklyTierForProduct(productId);
-    if (tier) {
-      const creditsToGrant = Math.round(tier.seconds / 60) * 5; // voice rate
-      await grantUserCredits(appUserId, creditsToGrant);
-      console.log(`[Billing] Granted ${creditsToGrant} credits (${tier.label}) to user ${appUserId} via RevenueCat webhook`);
-
-      return res.status(200).json({ acknowledged: true, tier: tier.label, credits: creditsToGrant });
     }
 
     return res.status(200).json({ acknowledged: true, reason: 'product_not_configured' });

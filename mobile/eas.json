@@ -9,7 +9,7 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "development",
-        "EXPO_PUBLIC_API_URL": "https://api.emmaline.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api"
       }
     },
     "preview": {
@@ -21,7 +21,7 @@
       },
       "env": {
         "APP_VARIANT": "preview",
-        "EXPO_PUBLIC_API_URL": "https://api.emmaline.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api"
       }
     },
     "production": {
@@ -30,7 +30,7 @@
       },
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://api.emmaline.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api"
       }
     },
     "production_test": {
@@ -41,7 +41,7 @@
       },
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://api.emmaline.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.oov.digital/api"
       }
     }
   },

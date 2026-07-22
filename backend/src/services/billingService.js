@@ -2,18 +2,7 @@ import {
   getUserBillingProfile,
   getSupabaseClient
 } from './databaseService.js';
-import { getRevenueCatProStatus } from './revenueCatService.js';
 import { getUserCreditStatus } from './creditService.js';
-
-// Weekly prepaid tiers (granted on purchase via RevenueCat)
-const WEEKLY_TIER_CONFIG = {
-  'emmaline_pro_weekly_30min': { seconds: 1800, label: '30 min / week' },
-  'emmaline_pro_weekly_60min': { seconds: 3600, label: '60 min / week' }
-};
-
-export const getWeeklyTierForProduct = (productId) => {
-  return WEEKLY_TIER_CONFIG[productId] || null;
-};
 
 export const getStripeProStatus = async (userId) => {
   if (!userId) return { isProActive: false };
@@ -52,31 +41,25 @@ export const getPaddleProStatus = async (userId) => {
 };
 
 export const getUserVoiceBillingStatus = async (userId) => {
-  const [billingProfile, revenueCatStatus, creditStatus, stripeStatus] = await Promise.all([
+  const [billingProfile, creditStatus, stripeStatus] = await Promise.all([
     getUserBillingProfile(userId).catch(() => ({})),
-    getRevenueCatProStatus(userId).catch(() => ({})),
     getUserCreditStatus(userId).catch(() => ({})),
     getStripeProStatus(userId).catch(() => ({}))
   ]);
 
-  const hasRevenueCatProAccess = Boolean(revenueCatStatus?.isProActive);
   const hasStripeProAccess = Boolean(stripeStatus?.isProActive);
   const hasCredits = (creditStatus.creditBalance || 0) > 0;
-  const hasVoiceAccess = hasRevenueCatProAccess || hasStripeProAccess || hasCredits;
+  const hasVoiceAccess = hasStripeProAccess || hasCredits;
 
-  const billingState = hasRevenueCatProAccess
-    ? 'pro_iap'
-    : hasStripeProAccess
-      ? 'pro_stripe'
-      : billingProfile?.billing_state || 'trial';
+  const billingState = hasStripeProAccess
+    ? 'pro_stripe'
+    : billingProfile?.billing_state || 'trial';
 
-  const voiceAccessSource = hasRevenueCatProAccess
-    ? 'apple_iap'
-    : hasStripeProAccess
-      ? 'stripe'
-      : hasCredits
-        ? 'credits'
-        : 'none';
+  const voiceAccessSource = hasStripeProAccess
+    ? 'stripe'
+    : hasCredits
+      ? 'credits'
+      : 'none';
 
   return {
     billingState,
@@ -90,14 +73,6 @@ export const getUserVoiceBillingStatus = async (userId) => {
     stripe: {
       active: hasStripeProAccess,
       tier: stripeStatus?.tier || null
-    },
-    revenueCat: {
-      configured: Boolean(revenueCatStatus?.configured),
-      status: revenueCatStatus?.status || 'not_configured',
-      source: revenueCatStatus?.source || null,
-      isProActive: hasRevenueCatProAccess,
-      expiresAt: revenueCatStatus?.expiresAt || null,
-      error: revenueCatStatus?.error || null
     }
   };
 };

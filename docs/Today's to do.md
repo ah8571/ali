@@ -40,10 +40,10 @@ emmaline_supabase_session etc. — storage keys (reset on re-login)
 ## Remodeling the subscription method 
 
 [ ] update subscription info The product IDs emmaline_pro_monthly, create IAP's for each; 
-[ ] RevenueCat → Products → the new products should auto-import within a few minutes after step 1
-[ ] RevenueCat → Offerings → add the two weekly products as packages in your existing offering (alongside the monthly one)
+[ ] RevenueCat → Products → the new product should auto-import within a few minutes after step 1
+[ ] RevenueCat → Offerings → 
 [ ] RevenueCat → Entitlements → attach both to the pro entitlement (same as the monthly product)
-[ ] Then the webhook I added at /api/billing/revenuecat-webhook will detect purchases of those product IDs and grant the corresponding seconds automatically.
+[ ] Then the webhook I added at /api/billing/revenuecat-webhook will detect purchases of those product IDs 
 [x] Rename products in Stripe: "Ali Weekly" → "Oov Weekly", "Ali Monthly" → "Oov Monthly". The tier keys in code are still ali_weekly / ali_monthly — those are internal identifiers, but the display labels are already "oov Weekly" / "oov Monthly".
 [x] Set the env vars in DO: STRIPE_PRICE_WEEKLY, STRIPE_PRICE_MONTHLY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [x] Create the webhook endpoint in Stripe: https://api.oov.digital/api/stripe/webhook (events: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted)

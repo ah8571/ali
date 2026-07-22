@@ -1,7 +1,7 @@
 const REVENUECAT_V1_BASE_URL = 'https://api.revenuecat.com/v1';
 const REVENUECAT_V2_BASE_URL = 'https://api.revenuecat.com/v2';
 const PRO_ENTITLEMENT_ID = 'pro';
-const PRO_PRODUCT_IDS = String(process.env.REVENUECAT_PRO_PRODUCT_IDS || 'emmaline_pro_monthly')
+const PRO_PRODUCT_IDS = String(process.env.REVENUECAT_PRO_PRODUCT_IDS || 'IAP_credits,iap_credits')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);

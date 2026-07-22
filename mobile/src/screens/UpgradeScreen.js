@@ -3,12 +3,10 @@ import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import { useNavigation } from '@react-navigation/native';
 import { getBillingStatus } from '../services/api.js';
 import {
-  getRevenueCatCustomerInfo,
   getRevenueCatDisplayMessage,
   getRevenueCatOfferings,
   getRevenueCatSetupMessage,
   initializeRevenueCat,
-  isProEntitlementActive,
   isRevenueCatEnabled,
   isRevenueCatUserCancelled,
   purchaseRevenueCatPackage
@@ -30,7 +28,6 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
   const [offeringsLoading, setOfferingsLoading] = useState(true);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [revenueCatMessage, setRevenueCatMessage] = useState(null);
-  const [isProActive, setIsProActive] = useState(false);
 
   useEffect(() => {
     const loadBilling = async () => {
@@ -64,14 +61,12 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           return;
         }
 
-        setIsProActive(Boolean(initResponse.isProActive));
-
         const offerings = await getRevenueCatOfferings();
         const currentOffering = offerings?.current || null;
         const defaultPackage = currentOffering?.monthly || currentOffering?.availablePackages?.[0] || null;
 
         setOfferingPackage(defaultPackage);
-        setRevenueCatMessage(defaultPackage ? null : 'Subscriptions are not available in this build yet. The App Store products still need to be attached to the active RevenueCat offering.');
+        setRevenueCatMessage(defaultPackage ? null : 'In-app purchases are not available in this build yet. The App Store products still need to be attached to the active RevenueCat offering.');
       } catch (error) {
         setRevenueCatMessage(getRevenueCatDisplayMessage(error?.message));
       } finally {
@@ -82,31 +77,29 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
     loadRevenueCat();
   }, []);
 
-  const refreshCustomerInfo = async () => {
-    const customerInfo = await getRevenueCatCustomerInfo();
-    setIsProActive(isProEntitlementActive(customerInfo));
-  };
-
   const handleWebUpgrade = (tier) => {
     Linking.openURL(`https://oov.digital/subscribe?tier=${tier}`);
   };
+
+  const handleIapPurchase = async () => {
     if (!offeringPackage) {
-      Alert.alert('Subscription unavailable', revenueCatMessage || 'No subscription package is ready in this build yet.');
+      Alert.alert('Unavailable', revenueCatMessage || 'In-app purchases are not available in this build yet.');
       return;
     }
 
     setPurchaseLoading(true);
 
     try {
-      const result = await purchaseRevenueCatPackage(offeringPackage);
-      const proActive = isProEntitlementActive(result?.customerInfo);
-      setIsProActive(proActive);
+      await purchaseRevenueCatPackage(offeringPackage);
       Alert.alert(
-        proActive ? 'Subscription active' : 'Purchase complete',
-        proActive
-          ? 'Your oov Pro subscription is active on this account.'
-          : 'The purchase completed, but the pro entitlement is not active yet. Check the RevenueCat product and entitlement mapping.'
+        'Credits added',
+        '100 credits have been added to your account.'
       );
+      // Refresh billing status to show updated credit balance
+      const response = await getBillingStatus();
+      if (response.success) {
+        setCredits(response.credits || null);
+      }
     } catch (error) {
       if (!isRevenueCatUserCancelled(error)) {
         Alert.alert('Purchase failed', error?.message || 'Unable to complete the purchase right now.');
@@ -190,7 +183,7 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
             </Text>
             <TouchableOpacity
               style={[styles.upgradeButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1 }, purchaseLoading && styles.buttonDisabled]}
-              onPress={handleUpgradePress}
+              onPress={handleIapPurchase}
               disabled={purchaseLoading}
               activeOpacity={0.85}
             >

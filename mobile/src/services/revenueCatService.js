@@ -5,7 +5,7 @@ import Purchases, { LOG_LEVEL, PURCHASES_ERROR_CODE } from 'react-native-purchas
 const IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY || '';
 const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY || '';
 const PRO_ENTITLEMENT_ID = 'pro';
-const PRO_PRODUCT_IDS = ['emmaline_pro_monthly'];
+const PRO_PRODUCT_IDS = ['IAP_credits', 'iap_credits'];
 
 let isConfigured = false;
 let currentAppUserId = null;

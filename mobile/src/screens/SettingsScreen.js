@@ -139,7 +139,7 @@ const SettingsScreen = ({ onLogout, onOpenUpgrade, onOpenScreen, onAccountDelete
         usedVoiceMinutes: Number(((response.billing.usedCallSeconds || 0) / 60).toFixed(1)),
         remainingFreeTrialSeconds: Number(response.billing.remainingFreeTrialSeconds || 0),
         voiceAccessSource: response.billing.voiceAccessSource || 'none',
-        isProActive: Boolean(response.billing.revenueCat?.isProActive)
+        isProActive: Boolean(response.billing.stripe?.active)
       });
       return;
     }
