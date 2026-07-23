@@ -215,9 +215,13 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
   const usePcmOutput = provider === 'openrouter' && chunks.length > 1;
   const ttsFormat = usePcmOutput ? 'pcm' : 'mp3';
 
-  // Process chunks in parallel batches of 2 (OpenRouter rate limit friendly)
-  for (let i = 0; i < chunks.length; i += 2) {
-    const batch = chunks.slice(i, i + 2);
+  // OpenRouter needs many small chunks (~400 chars each for Kokoro) so we
+  // process them in larger parallel batches to stay under server timeouts.
+  const batchSize = provider === 'openrouter' ? 4 : 2;
+  const batchDelay = provider === 'openrouter' ? 100 : 500;
+
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map((chunk) =>
         textToAudio(chunk, {
@@ -236,8 +240,8 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
     );
     audioBuffers.push(...batchResults);
     // Brief pause between batches to respect rate limits
-    if (i + 2 < chunks.length) {
-      await new Promise((r) => setTimeout(r, 500));
+    if (i + batchSize < chunks.length) {
+      await new Promise((r) => setTimeout(r, batchDelay));
     }
   }
 
