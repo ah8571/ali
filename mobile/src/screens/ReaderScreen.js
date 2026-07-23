@@ -742,7 +742,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     const fallbackConfig = {
       text: normalizedText,
       title: documentTitle,
-      provider: 'resemble',
+      provider: voiceOption?.provider || 'resemble',
       voiceProfile: selectedReaderVoiceId,
       languagePreference,
       speechRate
@@ -820,10 +820,11 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
         getSpeechRatePreference()
       ]);
       const speechRate = Math.max(0.75, Math.min(1.1, Number(savedSpeechRate) || 1));
+      const voiceOpt = READER_AUDIO_VOICE_OPTIONS.find((o) => o.id === selectedReaderVoiceId);
       const response = await saveReaderAudio({
         text: normalizedText,
         title: documentTitle,
-        provider: 'resemble',
+        provider: voiceOpt?.provider || 'resemble',
         voiceProfile: selectedReaderVoiceId,
         languagePreference,
         speechRate
@@ -852,7 +853,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
         textSignature: buildReaderTextSignature(documentTitle, readerText),
         characterCount: response.metadata?.characterCount || normalizedText.length,
         languageCode: response.metadata?.languageCode || resolveSpeechLanguage(languagePreference),
-        provider: response.metadata?.provider || 'resemble',
+        provider: response.metadata?.provider || voiceOpt?.provider || 'resemble',
         voiceProfile: response.metadata?.voiceProfile || selectedReaderVoiceId
       };
 
