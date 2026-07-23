@@ -254,8 +254,8 @@ const handleCompleteRealtimeCall = async (req, res) => {
         : null
     });
   } catch (error) {
-    console.error('Error completing realtime call:', error.message);
-    return res.status(500).json({ error: 'Failed to record call completion.' });
+    console.error('Error completing realtime call:', error.message, error.stack?.split('\n')[1]);
+    return res.status(500).json({ error: error.message || 'Failed to record call completion.' });
   }
 };
 
