@@ -51,8 +51,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingBottom: height * 0.25,
+    paddingRight: 20,
     zIndex: 1000,
   },
   content: {

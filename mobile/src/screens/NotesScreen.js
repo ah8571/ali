@@ -7,13 +7,11 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  SectionList
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { deleteNote, getNotes, getTopics } from '../services/api.js';
+import { deleteCall, deleteNote, getCalls, getNotes, getTopics } from '../services/api.js';
 import NoteCard from '../components/NoteCard';
-import TranscriptScreen from './TranscriptScreen';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
 import { getNoteTextScalePreference } from '../utils/secureStorage.js';
@@ -21,20 +19,33 @@ import { setOnNotesChanged } from '../services/voiceService.js';
 
 /**
  * NotesScreen
- * View notes organized by topic with ability to create new notes.
- * Also includes a Transcripts tab for viewing call transcripts.
+ * Dashboard with collapsible Notes and Transcripts sections.
  */
 const BOTTOM_SAFE_ZONE = 44;
 
-const TABS = [
-  { key: 'notes', label: 'Notes', icon: 'document-text' },
-  { key: 'transcripts', label: 'Transcripts', icon: 'mic' },
-];
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const getTranscriptModeLabel = (callRecord) => {
+  const rawMode = callRecord?.callMode || callRecord?.callType || callRecord?.transcriptType || '';
+  if (typeof rawMode === 'string' && /listen/i.test(rawMode)) return 'Listen Mode';
+  return 'Live Call';
+};
 
 const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState('notes');
+  const [notesExpanded, setNotesExpanded] = useState(true);
+  const [transcriptsExpanded, setTranscriptsExpanded] = useState(true);
   const [notes, setNotes] = useState([]);
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +53,11 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [noteTextScale, setNoteTextScale] = useState(1);
   const [selectedNoteIds, setSelectedNoteIds] = useState([]);
+
+  // Transcript state
+  const [transcripts, setTranscripts] = useState([]);
+  const [transcriptsLoading, setTranscriptsLoading] = useState(false);
+  const [selectedTranscriptIds, setSelectedTranscriptIds] = useState([]);
 
   const loadNotes = useCallback(async (topicOverride = selectedTopic, options = {}) => {
     if (!options.silent) {
@@ -138,6 +154,85 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
     setSelectedNoteIds((currentSelection) => currentSelection.filter((noteId) => notes.some((note) => note.id === noteId)));
   }, [notes]);
 
+  // ── Transcripts ──
+  const loadTranscripts = useCallback(async (options = {}) => {
+    if (!options.silent) setTranscriptsLoading(true);
+    try {
+      const response = await getCalls();
+      if (!response.success) throw new Error(response.error || 'Unable to load transcripts');
+      setTranscripts(response.calls || []);
+    } catch (error) {
+      console.error('Error loading transcripts:', error);
+    } finally {
+      if (!options.silent) setTranscriptsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadTranscripts(); }, [loadTranscripts]);
+
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      loadTranscripts({ silent: true });
+    });
+    return () => unsubscribeFocus();
+  }, [loadTranscripts, navigation]);
+
+  useEffect(() => {
+    setSelectedTranscriptIds((current) =>
+      current.filter((id) => transcripts.some((t) => t.id === id))
+    );
+  }, [transcripts]);
+
+  const groupedTranscripts = transcripts.reduce((groups, transcript) => {
+    const dateKey = formatDate(transcript.startedAt);
+    const existing = groups.find((g) => g.title === dateKey);
+    if (existing) { existing.data.push(transcript); }
+    else { groups.push({ title: dateKey, data: [transcript] }); }
+    return groups;
+  }, []);
+
+  const handleTranscriptPress = (transcript) => {
+    if (selectedTranscriptIds.length > 0) {
+      setSelectedTranscriptIds((current) =>
+        current.includes(transcript.id)
+          ? current.filter((id) => id !== transcript.id)
+          : [...current, transcript.id]
+      );
+      return;
+    }
+    navigation.navigate('CallDetail', { callId: transcript.id });
+  };
+
+  const handleSelectTranscript = (callId) => {
+    setSelectedTranscriptIds((current) =>
+      current.includes(callId)
+        ? current.filter((id) => id !== callId)
+        : [...current, callId]
+    );
+  };
+
+  const handleDeleteSelectedTranscripts = () => {
+    if (selectedTranscriptIds.length === 0) return;
+    Alert.alert(
+      'Delete transcripts',
+      `Delete ${selectedTranscriptIds.length} selected?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            const results = await Promise.all(selectedTranscriptIds.map((id) => deleteCall(id)));
+            if (results.some((r) => !r.success)) {
+              Alert.alert('Delete failed', 'One or more transcripts could not be deleted.');
+            }
+            setSelectedTranscriptIds([]);
+            loadTranscripts({ silent: true });
+          }
+        }
+      ]
+    );
+  };
+
   const handleCreateNote = () => {
     navigation.navigate('CreateNote');
   };
@@ -152,14 +247,9 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
     }))
     .filter(group => group.data.length > 0 || selectedTopic === null);
 
-  // Add "Unorganized" section if there are notes without a topic
   const unorganizedNotes = notes.filter(note => !note.topicId);
   if (unorganizedNotes.length > 0 && (selectedTopic === null)) {
-    groupedNotes.unshift({
-      title: '',
-      data: unorganizedNotes,
-      topicId: null
-    });
+    groupedNotes.unshift({ title: '', data: unorganizedNotes, topicId: null });
   }
 
   const handleEditNote = (note) => {
@@ -171,7 +261,6 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
       ));
       return;
     }
-
     navigation.navigate('CreateNote', { note });
   };
 
@@ -180,35 +269,24 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
       if (currentSelection.includes(noteId)) {
         return currentSelection.filter((currentNoteId) => currentNoteId !== noteId);
       }
-
       return [...currentSelection, noteId];
     });
   };
 
   const handleDeleteSelectedNotes = () => {
-    if (selectedNoteIds.length === 0) {
-      return;
-    }
-
+    if (selectedNoteIds.length === 0) return;
     Alert.alert(
       'Delete notes',
       `Delete ${selectedNoteIds.length} selected ${selectedNoteIds.length === 1 ? 'note' : 'notes'}?`,
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
+          text: 'Delete', style: 'destructive',
           onPress: async () => {
             const deletionResults = await Promise.all(selectedNoteIds.map((noteId) => deleteNote(noteId)));
-            const hasFailure = deletionResults.some((result) => !result.success);
-
-            if (hasFailure) {
+            if (deletionResults.some((result) => !result.success)) {
               Alert.alert('Delete failed', 'One or more selected notes could not be deleted.');
             }
-
             setSelectedNoteIds([]);
             loadNotes(selectedTopic, { silent: true });
           }
@@ -217,333 +295,253 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
     );
   };
 
-  const renderNote = ({ item }) => (
-    <NoteCard
-      note={item}
-      noteTextScale={noteTextScale}
-      onPress={() => handleEditNote(item)}
-      onLongPress={() => handleSelectNote(item.id)}
-      isSelected={selectedNoteIds.includes(item.id)}
-      selectionMode={selectedNoteIds.length > 0}
-    />
-  );
+  const bottomContentInset = Math.max(insets.bottom, BOTTOM_SAFE_ZONE);
 
-  const renderSectionHeader = ({ section: { title } }) => (
-    !title ? null : (
-    <View style={[styles.sectionHeader, { backgroundColor: 'transparent' }]}>
-      <Text style={[styles.sectionTitle, { color: colors.mutedText }]}>{title}</Text>
-    </View>
-    )
-  );
-
-  const renderEmptyListState = () => (
-    <View style={styles.emptyListState}>
-      <Text style={[styles.emptyListText, { color: colors.mutedText }]}>Tap + to create your first note.</Text>
-    </View>
-  );
-
-  const renderListHeader = () => (
-    <>
-      {/* Tab bar */}
-      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, isActive && [styles.tabActive, { borderBottomColor: colors.accent }]]}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={tab.icon}
-                size={16}
-                color={isActive ? colors.accent : colors.mutedText}
-                style={styles.tabIcon}
-              />
-              <Text style={[styles.tabText, { color: isActive ? colors.accent : colors.mutedText }]}>
-                {tab.label}
-              </Text>
-              <Ionicons
-                name={isActive ? 'chevron-down' : 'chevron-forward'}
-                size={14}
-                color={isActive ? colors.accent : colors.mutedText}
-              />
-            </TouchableOpacity>
-          );
-        })}
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} style={styles.loader} />
       </View>
+    );
+  }
 
-      {activeTab === 'notes' ? (
-        <>
-          <View style={[styles.headerBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-            <View style={styles.titleRow}>
-              <Ionicons name="chevron-down" size={18} color={colors.mutedText} />
-              <Text style={[styles.pageTitle, { color: colors.text }]}>Notes</Text>
-            </View>
-            <View style={styles.headerActions}>
-              {selectedNoteIds.length > 0 ? (
-                <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedNotes}>
-                  <Feather name="trash-2" size={20} color={colors.text} />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.createButton}
-                  onPress={handleCreateNote}
-                >
-                  <Text style={[styles.createButtonText, { color: colors.text }]}>+</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: bottomContentInset + 24 }}
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
+      >
+        {/* ══════ NOTES SECTION ══════ */}
+        <TouchableOpacity
+          style={[styles.sectionHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+          onPress={() => setNotesExpanded((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons
+              name={notesExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={colors.mutedText}
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text>
           </View>
-
-          {topics.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={[styles.topicScroll, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
-              contentContainerStyle={styles.topicContent}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.topicTag,
-                  { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                  selectedTopic === null && [styles.topicTagActive, { backgroundColor: colors.accent, borderColor: colors.accent }]
-                ]}
-                onPress={() => setSelectedTopic(null)}
-              >
-                <Text
-                  style={[
-                    styles.topicTagText,
-                    { color: colors.mutedText },
-                    selectedTopic === null && styles.topicTagTextActive
-                  ]}
-                >
-                  All
-                </Text>
+          <View style={styles.sectionHeaderRight}>
+            {selectedNoteIds.length > 0 ? (
+              <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedNotes}>
+                <Feather name="trash-2" size={20} color={colors.text} />
               </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.addButton} onPress={handleCreateNote}>
+                <Ionicons name="add" size={22} color={colors.text} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
 
-              {topics.map(topic => (
+        {notesExpanded && (
+          <View>
+            {topics.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={[styles.topicScroll, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+                contentContainerStyle={styles.topicContent}
+              >
                 <TouchableOpacity
-                  key={topic.id}
                   style={[
                     styles.topicTag,
                     { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                    selectedTopic === topic.id && [styles.topicTagActive, { backgroundColor: colors.accent, borderColor: colors.accent }]
+                    selectedTopic === null && [styles.topicTagActive, { backgroundColor: colors.accent, borderColor: colors.accent }]
                   ]}
-                  onPress={() => setSelectedTopic(topic.id)}
+                  onPress={() => setSelectedTopic(null)}
                 >
-                  <Text
-                    style={[
-                      styles.topicTagText,
-                      { color: colors.mutedText },
-                      selectedTopic === topic.id && styles.topicTagTextActive
-                    ]}
-                  >
-                    {topic.name}
-                  </Text>
+                  <Text style={[styles.topicTagText, { color: colors.mutedText }, selectedTopic === null && styles.topicTagTextActive]}>All</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : null}
+                {topics.map(topic => (
+                  <TouchableOpacity
+                    key={topic.id}
+                    style={[
+                      styles.topicTag,
+                      { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                      selectedTopic === topic.id && [styles.topicTagActive, { backgroundColor: colors.accent, borderColor: colors.accent }]
+                    ]}
+                    onPress={() => setSelectedTopic(topic.id)}
+                  >
+                    <Text style={[styles.topicTagText, { color: colors.mutedText }, selectedTopic === topic.id && styles.topicTagTextActive]}>
+                      {topic.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
 
-          <View style={styles.listHeaderSpacer} />
-        </>
-      ) : (
-        <View style={styles.listHeaderSpacer} />
-      )}
-    </>
-  );
+            {groupedNotes.length === 0 ? (
+              <View style={styles.emptyListState}>
+                <Text style={[styles.emptyListText, { color: colors.mutedText }]}>Tap + to create your first note.</Text>
+              </View>
+            ) : (
+              groupedNotes.map(group => (
+                <View key={group.topicId || 'unorganized'}>
+                  {group.title ? (
+                    <View style={styles.noteSectionHeader}>
+                      <Text style={[styles.noteSectionTitle, { color: colors.mutedText }]}>{group.title}</Text>
+                    </View>
+                  ) : null}
+                  {group.data.map(note => (
+                    <NoteCard
+                      key={note.id}
+                      note={note}
+                      noteTextScale={noteTextScale}
+                      onPress={() => handleEditNote(note)}
+                      onLongPress={() => handleSelectNote(note.id)}
+                      isSelected={selectedNoteIds.includes(note.id)}
+                      selectionMode={selectedNoteIds.length > 0}
+                    />
+                  ))}
+                </View>
+              ))
+            )}
+          </View>
+        )}
 
-  const bottomContentInset = Math.max(insets.bottom, BOTTOM_SAFE_ZONE);
+        {/* ══════ TRANSCRIPTS SECTION ══════ */}
+        <TouchableOpacity
+          style={[styles.sectionHeader, styles.sectionHeaderSpaced, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+          onPress={() => setTranscriptsExpanded((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons
+              name={transcriptsExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={colors.mutedText}
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Transcripts</Text>
+          </View>
+          <View style={styles.sectionHeaderRight}>
+            {selectedTranscriptIds.length > 0 && (
+              <TouchableOpacity style={styles.iconButton} onPress={handleDeleteSelectedTranscripts}>
+                <Feather name="trash-2" size={20} color={colors.text} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }] }>
-      {activeTab === 'transcripts' ? (
-        <TranscriptScreen
-          navigation={navigation}
-          onAppHeaderScroll={onAppHeaderScroll}
-          embedded
-        />
-      ) : loading ? (
-        <ActivityIndicator size="large" color={colors.accent} style={styles.loader} />
-      ) : errorMessage ? (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyText, { color: colors.text }]}>Unable to load notes</Text>
-          <Text style={[styles.emptySubtext, { color: colors.mutedText }]}>{errorMessage}</Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={groupedNotes}
-          keyExtractor={(item, index) => item.id || index.toString()}
-          renderItem={renderNote}
-          renderSectionHeader={renderSectionHeader}
-          ListHeaderComponent={renderListHeader}
-          ListEmptyComponent={renderEmptyListState}
-          contentContainerStyle={[styles.notesList, { paddingBottom: bottomContentInset + 24 }]}
-          onScroll={handleListScroll}
-          scrollEventThrottle={16}
-        />
-      )}
+        {transcriptsExpanded && (
+          <View>
+            {transcriptsLoading ? (
+              <ActivityIndicator size="small" color={colors.accent} style={styles.loader} />
+            ) : transcripts.length === 0 ? (
+              <View style={styles.emptyListState}>
+                <Text style={[styles.emptyListText, { color: colors.mutedText }]}>No transcripts yet</Text>
+              </View>
+            ) : (
+              groupedTranscripts.map(group => (
+                <View key={group.title}>
+                  <View style={styles.noteSectionHeader}>
+                    <Text style={[styles.noteSectionTitle, { color: colors.mutedText }]}>{group.title}</Text>
+                  </View>
+                  {group.data.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.transcriptCard,
+                        {
+                          backgroundColor: selectedTranscriptIds.includes(item.id) ? colors.chipSelectedBg : colors.surface,
+                          borderColor: selectedTranscriptIds.includes(item.id) ? colors.accent : colors.border
+                        }
+                      ]}
+                      onPress={() => handleTranscriptPress(item)}
+                      onLongPress={() => handleSelectTranscript(item.id)}
+                      delayLongPress={220}
+                    >
+                      <View style={styles.transcriptHeader}>
+                        <View style={styles.transcriptMetaColumn}>
+                          <Text style={[styles.transcriptTime, { color: colors.text }]}>
+                            {new Date(item.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                          <Text style={[styles.transcriptMode, { color: colors.mutedText }]}>{getTranscriptModeLabel(item)}</Text>
+                        </View>
+                        <Text style={[styles.transcriptDuration, { color: colors.mutedText }]}>{item.callDurationSeconds}s</Text>
+                      </View>
+                      <Text style={[styles.transcriptPreview, { color: colors.mutedText }]} numberOfLines={2}>
+                        {item.summary || item.fullTranscript?.substring(0, 100) || 'No transcript'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))
+            )}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa'
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-  },
-  tabIcon: {
-    marginRight: 2,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  headerBar: {
-    backgroundColor: '#fff',
-    paddingHorizontal: designTokens.chrome.listHeaderHorizontalPadding,
-    paddingTop: designTokens.chrome.listHeaderVerticalPadding,
-    paddingBottom: designTokens.chrome.listHeaderVerticalPadding,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  // ── Section headers (accordion) ──
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  titleRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  pageTitle: {
-    fontSize: designTokens.typography.pageTitle,
-    fontWeight: '700',
-    color: '#212529'
-  },
-  createButton: {
-    minWidth: 28,
-    minHeight: 28,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
-  iconButton: {
-    minWidth: 28,
-    minHeight: 28,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  createButtonText: {
-    fontSize: 36,
-    color: '#111111',
-    fontWeight: '300',
-    lineHeight: 36
-  },
-  topicScroll: {
-    backgroundColor: '#fff',
+    paddingHorizontal: designTokens.chrome.listHeaderHorizontalPadding,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef'
+    borderBottomColor: '#e9ecef',
   },
-  topicContent: {
-    paddingHorizontal: designTokens.spacing.md,
-    paddingVertical: 10
-  },
+  sectionHeaderSpaced: { marginTop: 0, borderTopWidth: 1, borderTopColor: '#e9ecef' },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 20, fontWeight: '700' },
+  addButton: { padding: 4 },
+  iconButton: { paddingHorizontal: 6, paddingVertical: 6 },
+  // ── Topics ──
+  topicScroll: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
+  topicContent: { paddingHorizontal: designTokens.spacing.md, paddingVertical: 10 },
   topicTag: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: designTokens.radius.pill,
-    backgroundColor: '#e9ecef',
-    marginRight: designTokens.spacing.sm,
-    borderWidth: 1,
-    borderColor: '#dee2e6'
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: designTokens.radius.pill,
+    backgroundColor: '#e9ecef', marginRight: designTokens.spacing.sm,
+    borderWidth: 1, borderColor: '#dee2e6'
   },
-  topicTagActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF'
-  },
-  topicTagText: {
-    fontSize: designTokens.typography.label,
-    fontWeight: '500',
-    color: '#495057'
-  },
-  topicTagTextActive: {
-    color: '#fff'
-  },
-  loader: {
-    marginTop: 50
-  },
-  sectionHeader: {
+  topicTagActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  topicTagText: { fontSize: designTokens.typography.label, fontWeight: '500', color: '#495057' },
+  topicTagTextActive: { color: '#fff' },
+  // ── Note section sub-header ──
+  noteSectionHeader: {
     paddingHorizontal: designTokens.spacing.md,
     paddingVertical: designTokens.spacing.sm,
-    backgroundColor: '#f8f9fa'
   },
-  sectionTitle: {
+  noteSectionTitle: {
     fontSize: designTokens.typography.sectionLabel,
     fontWeight: '600',
-    color: '#6c757d',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: designTokens.spacing.xxxl
+  // ── Transcript cards ──
+  transcriptCard: {
+    borderRadius: designTokens.radius.sm,
+    padding: designTokens.spacing.md,
+    marginHorizontal: designTokens.spacing.sm,
+    marginBottom: designTokens.spacing.sm,
+    borderWidth: 1,
   },
-  emptyListState: {
-    paddingHorizontal: designTokens.spacing.lg,
-    paddingTop: designTokens.spacing.lg
+  transcriptHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8
   },
-  emptyListText: {
-    fontSize: designTokens.typography.body,
-    textAlign: 'center'
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 8
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6c757d',
-    textAlign: 'center'
-  },
-  notesList: {
-    paddingHorizontal: 10,
-    paddingTop: 10
-  },
-  listHeaderSpacer: {
-    height: 6
-  }
+  transcriptMetaColumn: { flexShrink: 1, gap: 2 },
+  transcriptTime: { fontSize: 14, fontWeight: '600' },
+  transcriptMode: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  transcriptDuration: { fontSize: 12 },
+  transcriptPreview: { fontSize: designTokens.typography.bodySmall, lineHeight: 18 },
+  // ── Misc ──
+  loader: { marginTop: 50 },
+  emptyListState: { paddingHorizontal: designTokens.spacing.lg, paddingTop: designTokens.spacing.lg, paddingBottom: designTokens.spacing.lg },
+  emptyListText: { fontSize: designTokens.typography.body, textAlign: 'center' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: designTokens.spacing.xxxl },
+  emptyText: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  emptySubtext: { fontSize: 14, textAlign: 'center' },
 });
 
 export default NotesScreen;
