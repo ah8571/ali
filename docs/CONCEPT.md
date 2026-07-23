@@ -60,7 +60,7 @@ though TECHNICALLY we could have a seperate tab devoted to inbound calls to a nu
 
 ## Phase 1: Publishable MVP
 
-putting tabs on the same page; actually am thinking of a somewhat significant change that will perhaps make this app a lot simpler.... perhaps the 'notes' section becomes just like a hybrid dashboard that can carry notes but also when people click the plus button, it will create a screen where people can add text to read it... that's at least how the 'natural reader' app styles things, people just go into it and paste whatever text they want to hear so it is simpler to understand. Perhaps what we can do is create sections on the dashboard like a notes section that shows a certain amount of notes or just a tab that says notes and when they want to open the notes tab they click a chevron. a transcription section with a chevron in case they don't want to see all of their transcripts. That way it simplifies things? rather than having the tabs on the left hand side... and may make it easier for the voice agent to access these from one place. 
+Coconote features: ingestion of pdf's, video links, perhaps people can take photos in order to have access to the info and to break it down; they have flash cards, note taking, quizzes built in as well
 
 consider a 'silent text' option in the speaker section but designed with this kind of voice mode screen (ie a kind of transparent overlay screen), where you can type in to chat and the ai responds, so you can see (but we would need to go through the process of integrating the providers )
 

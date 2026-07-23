@@ -119,7 +119,7 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
         {/* Weekly tier */}
         <View style={[styles.tierCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}>
           <Text style={[styles.tierEyebrow, { color: colors.accent }]}>Weekly</Text>
-          <Text style={[styles.tierPrice, { color: colors.text }]}>$X.99<Text style={styles.tierPeriod}> / week</Text></Text>
+          <Text style={[styles.tierPrice, { color: colors.text }]}>$7.99<Text style={styles.tierPeriod}> / week</Text></Text>
           <View style={styles.tierBenefits}>
             {[
               '100 credits per week',
@@ -145,7 +145,7 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
         {/* Monthly tier */}
         <View style={[styles.tierCard, { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 2 }]}>
           <Text style={[styles.tierEyebrow, { color: colors.accent }]}>Monthly · Best value</Text>
-          <Text style={[styles.tierPrice, { color: colors.text }]}>$X.99<Text style={styles.tierPeriod}> / month</Text></Text>
+          <Text style={[styles.tierPrice, { color: colors.text }]}>$19.99<Text style={styles.tierPeriod}> / month</Text></Text>
           <View style={styles.tierBenefits}>
             {[
               '500 credits per month',
@@ -168,9 +168,11 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.manageLink, { color: colors.mutedText, marginTop: 8 }]}>
-          Manage subscription above
-        </Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://oov.digital/account')}>
+          <Text style={[styles.manageLink, { color: colors.accent, marginTop: 8 }]}>
+            Manage subscription →
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Apple IAP — one-off credit purchase for compliance */}

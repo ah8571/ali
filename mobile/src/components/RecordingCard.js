@@ -188,8 +188,8 @@ const RecordingCard = ({ entry, colors, onRefresh }) => {
         </View>
       )}
 
-      {/* Playback controls (shown when playing or loaded) */}
-      {isLoaded && (
+      {/* Playback controls (shown when menu is open and loaded) */}
+      {isLoaded && menuOpen && (
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.controlButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
