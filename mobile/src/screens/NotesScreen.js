@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { deleteCall, deleteNote, getCalls, getNotes, getTopics } from '../services/api.js';
+import { deleteCall, deleteNote, getCalls, getNotes, getSavedReaderAudio, getTopics } from '../services/api.js';
 import NoteCard from '../components/NoteCard';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
@@ -46,6 +46,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const insets = useSafeAreaInsets();
   const [notesExpanded, setNotesExpanded] = useState(true);
   const [transcriptsExpanded, setTranscriptsExpanded] = useState(true);
+  const [recordingsExpanded, setRecordingsExpanded] = useState(true);
   const [notes, setNotes] = useState([]);
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,10 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const [transcripts, setTranscripts] = useState([]);
   const [transcriptsLoading, setTranscriptsLoading] = useState(false);
   const [selectedTranscriptIds, setSelectedTranscriptIds] = useState([]);
+
+  // Recordings state
+  const [recordings, setRecordings] = useState([]);
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
 
   const loadNotes = useCallback(async (topicOverride = selectedTopic, options = {}) => {
     if (!options.silent) {
@@ -232,6 +237,30 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
       ]
     );
   };
+
+  // ── Recordings ──
+  const loadRecordings = useCallback(async (options = {}) => {
+    if (!options.silent) setRecordingsLoading(true);
+    try {
+      const response = await getSavedReaderAudio();
+      if (response.success) {
+        setRecordings(response.entries || response.audioEntries || []);
+      }
+    } catch (error) {
+      console.error('Error loading recordings:', error);
+    } finally {
+      if (!options.silent) setRecordingsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadRecordings(); }, [loadRecordings]);
+
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      loadRecordings({ silent: true });
+    });
+    return () => unsubscribeFocus();
+  }, [loadRecordings, navigation]);
 
   const handleCreateNote = () => {
     navigation.navigate('CreateNote');
@@ -471,6 +500,66 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
                     </TouchableOpacity>
                   ))}
                 </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* ══════ RECORDINGS SECTION ══════ */}
+        <TouchableOpacity
+          style={[styles.sectionHeader, styles.sectionHeaderSpaced, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+          onPress={() => setRecordingsExpanded((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons
+              name={recordingsExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={colors.mutedText}
+            />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recordings</Text>
+          </View>
+        </TouchableOpacity>
+
+        {recordingsExpanded && (
+          <View>
+            {recordingsLoading ? (
+              <ActivityIndicator size="small" color={colors.accent} style={styles.loader} />
+            ) : recordings.length === 0 ? (
+              <View style={styles.emptyListState}>
+                <Text style={[styles.emptyListText, { color: colors.mutedText }]}>
+                  No recordings yet. Use the Reader to save audio.
+                </Text>
+              </View>
+            ) : (
+              recordings.map((entry) => (
+                <TouchableOpacity
+                  key={entry.id || entry.savedAudioId}
+                  style={[
+                    styles.transcriptCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border }
+                  ]}
+                  onPress={() => navigation.navigate('Reader')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.transcriptHeader}>
+                    <View style={styles.transcriptMetaColumn}>
+                      <Text style={[styles.transcriptTime, { color: colors.text }]} numberOfLines={1}>
+                        {entry.title || 'Reader audio'}
+                      </Text>
+                      {entry.voiceLabel || entry.voiceName ? (
+                        <Text style={[styles.transcriptMode, { color: colors.mutedText }]}>
+                          {entry.voiceLabel || entry.voiceName}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {entry.createdAt ? (
+                      <Text style={[styles.transcriptDuration, { color: colors.mutedText }]}>
+                        {formatDate(entry.createdAt)}
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
               ))
             )}
           </View>

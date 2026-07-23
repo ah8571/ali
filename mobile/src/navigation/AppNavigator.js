@@ -108,6 +108,12 @@ const NotesStack = ({ onAppHeaderScroll, notesResetToken, stackKey }) => {
       >
         {(screenProps) => <CallDetailScreen {...screenProps} onAppHeaderScroll={onAppHeaderScroll} />}
       </Stack.Screen>
+      <Stack.Screen
+        name="Reader"
+        options={{ headerShown: false }}
+      >
+        {(screenProps) => <ReaderScreen {...screenProps} onAppHeaderScroll={onAppHeaderScroll} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 };
@@ -246,7 +252,7 @@ const AppHome = ({ onLogout }) => {
               onPress={() => openScreen('notes')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Notes</Text>
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Dashboard</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
