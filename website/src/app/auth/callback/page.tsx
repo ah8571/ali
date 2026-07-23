@@ -2,46 +2,58 @@
 
 import { useEffect, useState } from 'react';
 
-const APP_SCHEME = 'oov';
-const APP_PACKAGE = 'com.emmaline.app.dev';
-const APP_PATH = 'auth/callback';
+const APP_CALLBACK_URL = 'oov://auth/callback';
 
-const buildIntentUrl = (query: string, hash: string) => {
-  // Move hash params into query string so # doesn't conflict with Intent syntax
-  const hashParams = hash ? '&' + hash.substring(1) : '';
-  const params = query + hashParams;
-  const encodedParams = encodeURIComponent(params);
-  const fallback = encodeURIComponent(`https://oov.digital/auth/callback${query}${hash}`);
-  return `intent://${APP_PATH}${params}#Intent;scheme=${APP_SCHEME};package=${APP_PACKAGE};S.browser_fallback_url=${fallback};end`;
-};
+const buildAppRedirectUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const nextUrl = new URL(APP_CALLBACK_URL);
 
-const buildUniversalUrl = (query: string, hash: string) => {
-  return `oov://${APP_PATH}${query}${hash}`;
+  params.forEach((value, key) => {
+    nextUrl.searchParams.set(key, value);
+  });
+
+  return nextUrl.toString();
 };
 
 export default function AuthCallbackPage() {
-  const [appUrl, setAppUrl] = useState('');
+  const [appRedirectUrl, setAppRedirectUrl] = useState('');
 
   useEffect(() => {
-    const query = window.location.search;
-    const hash = window.location.hash;
-    const isAndroid = /android/i.test(navigator.userAgent);
-    const url = isAndroid ? buildIntentUrl(query, hash) : buildUniversalUrl(query, hash);
-    setAppUrl(url);
-    window.location.href = url;
+    setAppRedirectUrl(buildAppRedirectUrl());
   }, []);
 
   return (
-    <main className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 px-6">
-      <p className="text-white/60 text-sm text-center">
-        Complete your sign-in by opening the app
-      </p>
+    <main className="min-h-screen bg-black flex items-center justify-center px-6">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            var nextUrl = ${JSON.stringify(appRedirectUrl)};
+            if (window.location.hash) {
+              nextUrl += window.location.hash;
+            }
+            var manualOpen = document.getElementById('manual-open');
+            if (manualOpen) {
+              manualOpen.setAttribute('href', nextUrl);
+            }
+            window.location.replace(nextUrl);
+            window.setTimeout(function () {
+              if (manualOpen) {
+                manualOpen.style.display = 'inline-flex';
+              }
+            }, 1500);
+          `,
+        }}
+      />
       <a
-        href={appUrl}
-        className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-95"
+        id="manual-open"
+        href={appRedirectUrl}
+        className="hidden min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-white/90"
       >
-        Open Oov
+        Open oov
       </a>
+      <noscript>
+        <a href={appRedirectUrl}>Open oov</a>
+      </noscript>
     </main>
   );
 }
