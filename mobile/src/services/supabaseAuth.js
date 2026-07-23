@@ -283,7 +283,9 @@ export const isOAuthRedirectUrl = (redirectUrl) => {
 };
 
 export const startOAuthSignIn = async ({ provider, scopes, queryParams } = {}) => {
-  const redirectTo = getOAuthRedirectUrl();
+  const redirectTo = Platform.OS === 'android'
+    ? getOAuthBrowserRedirectUrl()
+    : getOAuthRedirectUrl();
   console.log('[AuthFlow] startOAuthSignIn:redirectTo', { provider, redirectTo });
 
   const { data, error } = await getClient().auth.signInWithOAuth({
