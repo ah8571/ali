@@ -359,9 +359,7 @@ const LoginScreen = ({ navigation, onLoginSuccess, pendingProfileSetup = null })
     logAuthFlow('handleSocialOAuth:start', { provider, mode: socialMode });
 
     try {
-      const redirectUrl = Platform.OS === 'android'
-        ? getOAuthBrowserRedirectUrl()
-        : getOAuthRedirectUrl();
+      const redirectUrl = getOAuthRedirectUrl();
       const oauthStart = await beginSocialOAuth({ provider, scopes, queryParams });
       logAuthFlow('handleSocialOAuth:oauthStart', {
         provider,
