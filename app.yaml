@@ -58,8 +58,7 @@ services:
       - key: API_URL
         value: https://api.oov.digital
     routes:
-      - path: /api
-        preserve_path_prefix: true
+      - path: /
 
 # Database (optional - remove if using Supabase only)
 databases: []
@@ -68,6 +67,6 @@ databases: []
 static_sites: []
 
 # Ingress (routes traffic to services)
-# By default, DigitalOcean will route:
-# / → website service
-# /api → backend service
+# This app spec currently defines only the backend service, so the custom
+# backend domain should route to `/` rather than relying on an extra `/api`
+# ingress prefix.

@@ -42,7 +42,11 @@ const normalizeApiBaseUrl = (url) => {
   try {
     const parsedUrl = new URL(normalizedUrl);
 
-    if (parsedUrl.hostname === 'api.oov.digital') {
+    if (parsedUrl.hostname === 'api.emmaline.app') {
+      parsedUrl.hostname = 'api.oov.digital';
+    } else if (parsedUrl.hostname === 'emmaline.app') {
+      parsedUrl.hostname = 'oov.digital';
+    } else if (parsedUrl.hostname === 'api.oov.digital') {
       parsedUrl.hostname = 'api.oov.digital';
     } else if (parsedUrl.hostname === 'oov.digital') {
       parsedUrl.hostname = 'oov.digital';
@@ -52,7 +56,10 @@ const normalizeApiBaseUrl = (url) => {
 
     return parsedUrl.toString().replace(/\/+$/, '');
   } catch (error) {
-    return normalizedUrl.replace('api.oov.digital', 'api.oov.digital').replace('oov.digital', 'oov.digital').replace(/\/+$/, '');
+    return normalizedUrl
+      .replace('api.emmaline.app', 'api.oov.digital')
+      .replace('emmaline.app', 'oov.digital')
+      .replace(/\/+$/, '');
   }
 };
 
@@ -131,7 +138,18 @@ const logApiFailure = (method, path, error) => {
 };
 
 const isMissingProfileError = (error) => {
-  return error?.response?.status === 404 && error?.response?.data?.error === 'User not found';
+  const responseStatus = Number(error?.response?.status);
+  const errorMessage = String(error?.response?.data?.error || error?.message || '').trim();
+
+  if (responseStatus === 404) {
+    if (!errorMessage) {
+      return true;
+    }
+
+    return errorMessage === 'User not found' || errorMessage === 'Request failed with status code 404';
+  }
+
+  return errorMessage === 'User not found' || errorMessage.includes('status code 404');
 };
 
 const isProfileConsentRequiredError = (error) => {
@@ -580,6 +598,13 @@ export const getCurrentUser = async () => {
         };
       }
     } catch (error) {
+      console.log('[AuthFlow] getCurrentUser:fetchProfileError', {
+        isMissingProfileError: isMissingProfileError(error),
+        message: error?.message || null,
+        status: error?.response?.status || null,
+        data: error?.response?.data || null
+      });
+
       if (!isMissingProfileError(error)) {
         throw error;
       }
@@ -587,6 +612,13 @@ export const getCurrentUser = async () => {
       try {
         user = await syncUserProfile({ email: session.user?.email || null });
       } catch (syncError) {
+        console.log('[AuthFlow] getCurrentUser:syncProfileError', {
+          isProfileConsentRequiredError: isProfileConsentRequiredError(syncError),
+          message: syncError?.message || null,
+          status: syncError?.response?.status || null,
+          data: syncError?.response?.data || null
+        });
+
         if (!isProfileConsentRequiredError(syncError)) {
           throw syncError;
         }
