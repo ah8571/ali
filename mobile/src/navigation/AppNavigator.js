@@ -414,6 +414,7 @@ const AppNavigator = ({ onAuthStateChange }) => {
       checkAuthStatus._running = true;
       try {
         const authenticated = await hasSession();
+        console.log('[AuthFlow] checkAuthStatus:hasSession', { authenticated });
 
         if (!authenticated) {
           Sentry.setUser(null);
@@ -426,6 +427,13 @@ const AppNavigator = ({ onAuthStateChange }) => {
         }
 
         const currentUserResponse = await getCurrentUser();
+        console.log('[AuthFlow] checkAuthStatus:getCurrentUser', {
+          success: Boolean(currentUserResponse?.success),
+          requiresProfileCompletion: Boolean(currentUserResponse?.requiresProfileCompletion),
+          hasUser: Boolean(currentUserResponse?.user),
+          error: currentUserResponse?.error || null,
+          profileSetup: currentUserResponse?.profileSetup || null
+        });
 
         if (currentUserResponse?.requiresProfileCompletion) {
           setPendingProfileSetup(currentUserResponse.profileSetup || null);
@@ -509,6 +517,12 @@ const AppNavigator = ({ onAuthStateChange }) => {
     const {
       data: { subscription }
     } = subscribeToSupabaseAuthState((_event, session) => {
+      console.log('[AuthFlow] onAuthStateChange', {
+        event: _event,
+        hasSession: Boolean(session),
+        hasUser: Boolean(session?.user),
+        email: session?.user?.email || null
+      });
       Promise.resolve().then(async () => {
         if (!session) {
           Sentry.setUser(null);

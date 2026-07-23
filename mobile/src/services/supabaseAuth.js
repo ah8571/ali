@@ -322,6 +322,12 @@ const parseOAuthCallbackParams = (redirectUrl) => {
 export const exchangeCodeForSession = async (redirectUrl) => {
   const { code, accessToken, refreshToken } = parseOAuthCallbackParams(redirectUrl);
 
+  console.log('[AuthFlow] exchangeCodeForSession:params', {
+    hasCode: Boolean(code),
+    hasAccessToken: Boolean(accessToken),
+    hasRefreshToken: Boolean(refreshToken)
+  });
+
   if (code) {
     const { data, error } = await getClient().auth.exchangeCodeForSession(code);
 
@@ -361,12 +367,18 @@ export const handleOAuthRedirect = async (redirectUrl) => {
     return false;
   }
 
+  console.log('[AuthFlow] handleOAuthRedirect:start', {
+    url: normalizedUrl,
+    alreadyHandled: normalizedUrl === lastHandledOAuthRedirectUrl
+  });
+
   if (normalizedUrl === lastHandledOAuthRedirectUrl) {
     return true;
   }
 
   await exchangeCodeForSession(normalizedUrl);
   lastHandledOAuthRedirectUrl = normalizedUrl;
+  console.log('[AuthFlow] handleOAuthRedirect:completed');
   return true;
 };
 
