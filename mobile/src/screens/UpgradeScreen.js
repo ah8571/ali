@@ -130,7 +130,8 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           <View style={styles.tierBenefits}>
             {[
               '100 credits per week',
-              '~20 min Voice Mode or 50 min Reader',
+              '~50 min Voice Mode or 100 min Reader',
+              'Credits are mix-and-match across features',
               'Unused credits roll over',
               'Cancel anytime'
             ].map((item) => (
@@ -156,7 +157,8 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           <View style={styles.tierBenefits}>
             {[
               '500 credits per month',
-              '~100 min Voice Mode or 250 min Reader',
+              '~250 min Voice Mode or 500 min Reader',
+              'Credits are mix-and-match across features',
               'Unused credits roll over',
               'Cancel anytime'
             ].map((item) => (
@@ -196,7 +198,7 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
             activeOpacity={0.85}
           >
             <Text style={[styles.upgradeButtonText, { color: colors.text }]}>
-              {purchaseLoading ? 'Processing...' : offeringPackage ? `Purchase credits — ${offeringPackage?.product?.priceString || '$9.99'}` : 'IAP unavailable in dev builds'}
+              {purchaseLoading ? 'Processing...' : offeringPackage ? `Purchase 100 credits — ${offeringPackage?.product?.priceString || '$9.99'}` : 'IAP unavailable in dev builds'}
             </Text>
           </TouchableOpacity>
           {!offeringPackage && (
@@ -212,11 +214,11 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           <Text style={[styles.usageTitle, { color: colors.text }]}>Credit rates</Text>
           <View style={styles.creditRow}>
             <Text style={[styles.creditMode, { color: colors.text }]}>Voice Mode</Text>
-            <Text style={[styles.creditRate, { color: colors.accent }]}>5 credits/min</Text>
+            <Text style={[styles.creditRate, { color: colors.accent }]}>2 credits/min</Text>
           </View>
           <View style={styles.creditRow}>
             <Text style={[styles.creditMode, { color: colors.text }]}>Reader — Natural Voice</Text>
-            <Text style={[styles.creditRate, { color: colors.accent }]}>2 credits/min</Text>
+            <Text style={[styles.creditRate, { color: colors.accent }]}>1 credit/min</Text>
           </View>
           <View style={styles.creditRow}>
             <Text style={[styles.creditMode, { color: colors.text }]}>Listen Mode</Text>
@@ -234,17 +236,10 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
           <Text style={[styles.usageTitle, { color: colors.text }]}>Your credits</Text>
           <View style={styles.usageRow}>
             <View style={styles.usageItem}>
-              <Text style={[styles.usageValue, { color: colors.accent }]}>
+              <Text style={[styles.usageValue, { color: colors.text }]}>
                 {credits ? credits.creditBalance : '...'}
               </Text>
               <Text style={[styles.usageLabel, { color: colors.mutedText }]}>Available</Text>
-            </View>
-            <View style={[styles.usageDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.usageItem}>
-              <Text style={[styles.usageValue, { color: colors.text }]}>
-                {credits ? `${credits.freeCreditsGranted} free` : '...'}
-              </Text>
-              <Text style={[styles.usageLabel, { color: colors.mutedText }]}>Granted</Text>
             </View>
           </View>
         </View>

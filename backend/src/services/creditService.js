@@ -2,9 +2,9 @@ import { getSupabaseClient } from './databaseService.js';
 
 // Rate card — credits consumed per minute of usage
 const CREDIT_RATES = {
-  voice_mode: 5,
+  voice_mode: 2,
   listen_mode: 1,
-  reader_natural: 2,
+  reader_natural: 1,
   reader_basic: 0
 };
 
