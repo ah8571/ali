@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
 import { getBillingStatus } from '../services/api.js';
 import {
   getRevenueCatDisplayMessage,
@@ -77,8 +78,14 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
     loadRevenueCat();
   }, []);
 
-  const handleWebUpgrade = (tier) => {
-    Linking.openURL(`https://oov.digital/subscribe?tier=${tier}`);
+  const handleWebUpgrade = async (tier) => {
+    await WebBrowser.openBrowserAsync(`https://oov.digital/subscribe?tier=${tier}`);
+    // Refresh billing status when the browser is dismissed
+    const response = await getBillingStatus();
+    if (response.success) {
+      setBilling(response.billing || null);
+      setCredits(response.credits || null);
+    }
   };
 
   const handleIapPurchase = async () => {
