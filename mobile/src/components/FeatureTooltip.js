@@ -26,13 +26,6 @@ const FeatureTooltip = ({ visible, onDismiss }) => {
   return (
     <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onDismiss}>
       <Animated.View style={[styles.content, { opacity }]}>
-        {/* Curvy arrow pointing down to the FAB */}
-        <Animated.View style={[styles.arrowWrap, { transform: [{ scale: pulse }] }]}>
-          <Ionicons name="chevron-down" size={28} color="#ffffff" style={styles.arrow1} />
-          <Ionicons name="chevron-down" size={28} color="#ffffff" style={styles.arrow2} />
-          <Ionicons name="arrow-down" size={36} color="#ffffff" style={styles.arrow3} />
-        </Animated.View>
-
         <View style={styles.card}>
           <Text style={styles.title}>Tap to start</Text>
           <Text style={styles.body}>
@@ -42,6 +35,13 @@ const FeatureTooltip = ({ visible, onDismiss }) => {
             <Text style={styles.dismissText}>Got it</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Curvy arrow pointing down-right to the speaker button */}
+        <Animated.View style={[styles.arrowWrap, { transform: [{ scale: pulse }] }]}>
+          <Ionicons name="chevron-down" size={28} color="#ffffff" style={styles.arrow1} />
+          <Ionicons name="chevron-down" size={28} color="#ffffff" style={styles.arrow2} />
+          <Ionicons name="arrow-down" size={36} color="#ffffff" style={styles.arrow3} />
+        </Animated.View>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -56,26 +56,34 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   content: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   arrowWrap: {
-    marginBottom: -8,
-    alignItems: 'center',
+    marginRight: 8,
+    marginTop: -8,
+    alignItems: 'flex-end',
   },
   arrow1: {
+    transform: [{ rotate: '315deg' }],
+    marginRight: 18,
     marginBottom: -12,
     opacity: 0.5,
   },
   arrow2: {
+    transform: [{ rotate: '315deg' }],
+    marginRight: 12,
     marginBottom: -10,
     opacity: 0.7,
   },
-  arrow3: {},
+  arrow3: {
+    transform: [{ rotate: '315deg' }],
+    marginRight: 4,
+  },
   card: {
     backgroundColor: '#1a1a2e',
     borderRadius: 16,
-    padding: 20,
-    maxWidth: 280,
+    padding: 24,
+    maxWidth: 300,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
@@ -94,14 +102,16 @@ const styles = StyleSheet.create({
   },
   dismissButton: {
     backgroundColor: '#ffffff',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center'
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    minWidth: 160,
   },
   dismissText: {
     color: '#0a0a0a',
-    fontSize: 14,
-    fontWeight: '600'
+    fontSize: 16,
+    fontWeight: '600',
   }
 });
 

@@ -13,7 +13,7 @@ const SLIDES = [
   {
     icon: 'volume-high',
     title: 'Transcriptions & Natural Voice Reader',
-    description: 'Tap the 🔊 listen mode to generate transcripts with premium natural voices. You get free starter credits to try it out — subscribe to continue using these features.',
+    description: 'Tap the 🔊, then Listen mode to generate transcriptions of your audio. Use the Reader option from the ☰ menu to listen to text with natural voices.',
   },
   {
     icon: 'mic',
