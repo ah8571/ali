@@ -515,7 +515,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
                         <Text style={[styles.transcriptDuration, { color: colors.mutedText }]}>{item.callDurationSeconds}s</Text>
                       </View>
                       <Text style={[styles.transcriptPreview, { color: colors.mutedText }]} numberOfLines={2}>
-                        {item.summary || item.fullTranscript?.substring(0, 100) || 'No transcript'}
+                        {item.summary || item.fullTranscript?.substring(0, 100) || `${getTranscriptModeLabel(item)} · ${item.callDurationSeconds || 0}s`}
                       </Text>
                     </TouchableOpacity>
                   ))}

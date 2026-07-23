@@ -100,7 +100,7 @@ Compare providers on:
 Rename product thinking from live call to voice mode.
 
 Recommended evaluation order:
-1. OpenAI Realtime API (current implementation — WebRTC) (18 per hr higher models)
+1. OpenAI Realtime API (current implementation — WebRTC) (price for lower models unclear
 2. xAI Grok Voice Agent API (WebSocket — API-compatible, ~half the cost)
 3. Inworld
 5. Gemini 3.1 Flash Live 
@@ -108,12 +108,15 @@ Recommended evaluation order:
 6. Amazon Nova Sonic (Listed on livekit)
 7. NVIDIA PersonaPlex (Listed on livekit)
 8. Phonic Speech-to-speech (Listed on livekit)
-9. Ultravox Realtime (open-source)
+assembly ai 4.5 per hr (from their website: https://www.assemblyai.com/blog/assemblyai-voice-agent-api-vs-openai-realtime-api)
+9. Ultravox Realtime (open-source) (3$ per minute)
 
 For more voice affordability look into: 
 https://openrouter.ai/openai/gpt-audio-mini
 
-assembly ai 4.5 per hr (from their website: https://www.assemblyai.com/blog/assemblyai-voice-agent-api-vs-openai-realtime-api)
+Livekit 50 per month paired with another model above like grok could be more affordable
+
+could consider this option: "Modular Chained Stacks: You can build a cheaper custom stack by pairing an open-source model (like Llama via OpenRouter) with specialized live STT/TTS providers like Deepgram or Cartesia" - google.com/ai
 
 
 ### Natural Voices (TTS)
@@ -141,9 +144,6 @@ LLama 3.1 8B (deepinfra, openrouter) -
 
 
 
-
-### Multi-lingual assistance
-2. Elevanlabs [supposedly?]
 
 
 ### STT Real-Time Transcription

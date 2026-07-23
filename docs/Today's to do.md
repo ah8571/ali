@@ -7,7 +7,7 @@
 - 30 character new name for apple
 Emmaline: Free Reader, Transcriber
 oov: Reader Transcriber Tutor <- (30)
-oov: Free Reader, Transcriber <- (29) 
+oov: Free TTS, Free Transcribe <- (30) 
 Ali: AI Voice Assistant <-
 Later
 Ali: Multitask with AI

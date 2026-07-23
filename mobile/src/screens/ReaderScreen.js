@@ -47,6 +47,11 @@ const READER_AUDIO_VOICE_OPTIONS = [
     provider: 'resemble'
   },
   {
+    id: 'kokoro',
+    label: 'Free (Kokoro)',
+    provider: 'openrouter'
+  },
+  {
     id: 'basic',
     label: 'Basic',
     provider: 'device'

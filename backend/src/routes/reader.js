@@ -57,6 +57,16 @@ const READER_PROVIDER_CONFIG = {
       languageCode: 'es-US',
       voiceProfile: DEFAULT_RESEMBLE_VOICE_PROFILE
     }
+  },
+  openrouter: {
+    en: {
+      languageCode: 'en-US',
+      voiceProfile: 'af_heart'
+    },
+    es: {
+      languageCode: 'es-US',
+      voiceProfile: 'ef_dora'
+    }
   }
 };
 
@@ -209,7 +219,7 @@ router.post('/audio', authMiddleware, async (req, res) => {
 
     // Deduct credits for reader (2/min for natural voice, 0 for basic)
     const requestData = normalizeReaderAudioRequest(req.body);
-    const creditMode = requestData.provider === 'resemble' || requestData.provider === 'elevenlabs'
+    const creditMode = requestData.provider === 'resemble' || requestData.provider === 'elevenlabs' || requestData.provider === 'openrouter'
       ? 'reader_natural'
       : 'reader_basic';
     const estimatedDurationSeconds = Math.ceil((audioResponse.metadata.characterCount / 900) * 60);
@@ -245,7 +255,7 @@ router.post('/audio/save', authMiddleware, async (req, res) => {
     const audioResponse = await buildReaderAudioResponse(requestData);
 
     // Deduct credits for reader (2/min for natural voice, 0 for basic)
-    const creditMode = requestData.provider === 'resemble' || requestData.provider === 'elevenlabs'
+    const creditMode = requestData.provider === 'resemble' || requestData.provider === 'elevenlabs' || requestData.provider === 'openrouter'
       ? 'reader_natural'
       : 'reader_basic';
     const estimatedDurationSeconds = Math.ceil((audioResponse.metadata.characterCount / 900) * 60);
