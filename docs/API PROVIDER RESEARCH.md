@@ -130,11 +130,7 @@ Alternatives to Elevanlabs
 4. Nova 2.0 Sonic
 
 low cost models
-x-ai/grok-stt-1.0 .10 per hour
-qwen/qwen3-asr-flash-2026-02-10 .126 per hour
-nvidia/parakeet-tdt-0.6b-v3 .09 per hour
-deepgram/nova-3 .258 per hour
-mistralai/voxtral-mini-transcribe .18 per hour
+
 
 ### LLM Summaries
 
@@ -158,10 +154,12 @@ Recommended evaluation order:
 4. Soniox
 
 low cost models 
-qwen/qwen3-asr-flash-2026-02-10 [https://openrouter.ai/models?output_modalities=transcription] .000035/second
-mistralai/voxtral-mini-transcribe [https://openrouter.ai/models?output_modalities=transcription] .003/minute
-nvidia/parakeet-tdt-0.6b-v3 [https://openrouter.ai/models?output_modalities=transcription] .0015/minute
-Deepgram nova-2 (.0043 per minute)
+x-ai/grok-stt-1.0 .10 per hour
+qwen/qwen3-asr-flash-2026-02-10 .126 per hour
+nvidia/parakeet-tdt-0.6b-v3 .09 per hour
+deepgram/nova-3 .258 per hour
+mistralai/voxtral-mini-transcribe .18 per hour
+
 Groq's Whisper
 Assembly (.0025 per minute)
 Gladia (.0033 per minute) - has in built speaker identification / summarization
@@ -169,9 +167,6 @@ Gladia (.0033 per minute) - has in built speaker identification / summarization
 On Device
 Use iOS SFSpeechRecognizer
 Android SpeechRecognizer
-
-Faster Whisper Large-v3 / Insanely Fast Whisper (.2 per hour of transcription potentially) - open-source
-- model on a rented GPU server (using providers like RunPod, Mystic or Vast.ai) [runpod charges per second of use]
 
 
 ### Load testing

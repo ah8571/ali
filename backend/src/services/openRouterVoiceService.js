@@ -34,6 +34,7 @@ export const OPENROUTER_STT_MODELS = {
     label: 'Free (NVIDIA Parakeet)',
     price: '$0.09/hr',
   },
+};
 
 /**
  * Generate speech from text using OpenRouter TTS.

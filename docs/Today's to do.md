@@ -26,7 +26,7 @@ oov.digital
 [x] supabase auth urls
 [x] Digital Ocean — droplet/app names are cosmetic, easy to rename. But if you use emmaline in any DNS/hostname config, those need updating.
 [x] API endpoints — api.emmaline.app would need to change or be aliased. If you keep the old domain as an alias, no mobile code changes needed.
-[ ] add env variables in digital ocean
+[x] add env variables in digital ocean
 [ ] App display name — changed in app.json?
 [ ] App Store review — a name change on an existing app is usually fine, but Apple occasionally flags dramatic rebrands. 
 [ ] unsubscribe from emmaline.app 
