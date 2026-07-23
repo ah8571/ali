@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { deleteCall, deleteNote, getCalls, getNotes, getSavedReaderAudio, getTopics } from '../services/api.js';
+import { deleteCall, deleteNote, getCalls, getNotes, getTopics } from '../services/api.js';
+import { loadLocalAudioRecordings } from '../utils/localAudioStorage.js';
 import NoteCard from '../components/NoteCard';
+import RecordingCard from '../components/RecordingCard';
 import { useAppTheme } from '../theme/appTheme.js';
 import { designTokens } from '../theme/designSystem.js';
 import { getNoteTextScalePreference } from '../utils/secureStorage.js';
@@ -242,10 +244,8 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
   const loadRecordings = useCallback(async (options = {}) => {
     if (!options.silent) setRecordingsLoading(true);
     try {
-      const response = await getSavedReaderAudio();
-      if (response.success) {
-        setRecordings(response.entries || response.audioEntries || []);
-      }
+      const entries = await loadLocalAudioRecordings();
+      setRecordings(entries);
     } catch (error) {
       console.error('Error loading recordings:', error);
     } finally {
@@ -533,33 +533,7 @@ const NotesScreen = ({ navigation, onAppHeaderScroll }) => {
               </View>
             ) : (
               recordings.map((entry) => (
-                <TouchableOpacity
-                  key={entry.id || entry.savedAudioId}
-                  style={[
-                    styles.transcriptCard,
-                    { backgroundColor: colors.surface, borderColor: colors.border }
-                  ]}
-                  onPress={() => navigation.navigate('Reader')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.transcriptHeader}>
-                    <View style={styles.transcriptMetaColumn}>
-                      <Text style={[styles.transcriptTime, { color: colors.text }]} numberOfLines={1}>
-                        {entry.title || 'Reader audio'}
-                      </Text>
-                      {entry.voiceLabel || entry.voiceName ? (
-                        <Text style={[styles.transcriptMode, { color: colors.mutedText }]}>
-                          {entry.voiceLabel || entry.voiceName}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {entry.createdAt ? (
-                      <Text style={[styles.transcriptDuration, { color: colors.mutedText }]}>
-                        {formatDate(entry.createdAt)}
-                      </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
+                <RecordingCard key={entry.id || entry.savedAudioId} entry={entry} colors={colors} />
               ))
             )}
           </View>
