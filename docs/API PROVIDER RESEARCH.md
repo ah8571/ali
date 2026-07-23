@@ -130,13 +130,11 @@ Alternatives to Elevanlabs
 4. Nova 2.0 Sonic
 
 low cost models
-Deepgram .015 per 1,000 characters
-
-Self hosted
-Kokoro-82M with budget friendly runpod gpu could lead to sub .01 compute costs
-StyleTTS 2
-ChatTTS
-XTTS v2 by Coqui
+x-ai/grok-stt-1.0 .10 per hour
+qwen/qwen3-asr-flash-2026-02-10 .126 per hour
+nvidia/parakeet-tdt-0.6b-v3 .09 per hour
+deepgram/nova-3 .258 per hour
+mistralai/voxtral-mini-transcribe .18 per hour
 
 ### LLM Summaries
 

@@ -1,0 +1,174 @@
+/**
+ * OpenRouter Voice Service
+ * Free/low-cost TTS and STT via OpenRouter's model proxy.
+ *
+ * TTS: hexgrad/kokoro-82m ($0.62/M chars)
+ * STT: qwen/qwen3-asr-flash ($0.126/hr), nvidia/parakeet-tdt-0.6b-v3 ($0.09/hr), deepgram/nova-3 ($0.258/hr)
+ */
+
+import axios from 'axios';
+
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const API_KEY = process.env.OPENROUTER_CODING_KEY || '';
+
+const getHeaders = () => ({
+  Authorization: `Bearer ${API_KEY}`,
+  'HTTP-Referer': 'https://oov.digital',
+  'X-OpenRouter-Title': 'oov',
+  'Content-Type': 'application/json',
+});
+
+export const OPENROUTER_TTS_MODELS = {
+  kokoro: {
+    id: 'hexgrad/kokoro-82m',
+    label: 'Kokoro (Free TTS)',
+    price: '$0.62/M chars',
+    languages: ['en', 'es', 'fr', 'hi', 'it', 'ja', 'pt', 'zh'],
+    voices: 54,
+  },
+};
+
+export const OPENROUTER_STT_MODELS = {
+  qwen: {
+    id: 'qwen/qwen3-asr-flash-2026-02-10',
+    label: 'Qwen ASR Flash',
+    price: '$0.126/hr',
+  },
+  nvidia: {
+    id: 'nvidia/parakeet-tdt-0.6b-v3',
+    label: 'NVIDIA Parakeet',
+    price: '$0.09/hr',
+  },
+  deepgram: {
+    id: 'deepgram/nova-3',
+    label: 'Deepgram Nova 3',
+    price: '$0.258/hr',
+  },
+};
+
+/**
+ * Generate speech from text using OpenRouter TTS.
+ * Returns { audioBase64, format, durationMs }
+ */
+export const openRouterTextToSpeech = async (text, options = {}) => {
+  if (!API_KEY) {
+    throw new Error('OPENROUTER_CODING_KEY is not configured.');
+  }
+
+  const model = options.model || 'hexgrad/kokoro-82m';
+  const voice = options.voice || 'af_heart'; // Default Kokoro voice (American female)
+
+  // Kokoro uses a system prompt with voice prefix format
+  const systemPrompt = `You are a text-to-speech engine. Generate speech for the following text. Voice: ${voice}. Output audio only.`;
+
+  try {
+    const response = await axios.post(
+      `${OPENROUTER_BASE}/chat/completions`,
+      {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text },
+        ],
+        max_tokens: 4096,
+      },
+      { headers: getHeaders(), timeout: 30000 }
+    );
+
+    const choice = response.data?.choices?.[0];
+    const content = choice?.message?.content || '';
+
+    // TTS models return audio data in the response
+    // Check for audio in the message content or dedicated audio field
+    const audioData = response.data?.audio || choice?.audio || null;
+    const usage = response.data?.usage || {};
+
+    return {
+      success: true,
+      audioBase64: audioData?.data || null,
+      format: audioData?.format || 'wav',
+      durationMs: audioData?.duration_ms || 0,
+      text: content,
+      model: response.data?.model || model,
+      cost: usage?.cost || 0,
+    };
+  } catch (error) {
+    const detail = error.response?.data?.error?.message || error.message;
+    console.error('[OpenRouter TTS] Error:', detail);
+    throw new Error(`OpenRouter TTS failed: ${detail}`);
+  }
+};
+
+/**
+ * Transcribe audio using OpenRouter STT.
+ * Accepts { audioBase64, format, language } and returns { text, confidence, durationMs }
+ */
+export const openRouterSpeechToText = async (audioBase64, options = {}) => {
+  if (!API_KEY) {
+    throw new Error('OPENROUTER_CODING_KEY is not configured.');
+  }
+
+  const model = options.model || 'nvidia/parakeet-tdt-0.6b-v3';
+  const language = options.language || 'en';
+  const format = options.format || 'wav';
+
+  // For STT, we send the audio as a data URL in the message
+  const dataUrl = `data:audio/${format};base64,${audioBase64}`;
+
+  try {
+    const response = await axios.post(
+      `${OPENROUTER_BASE}/chat/completions`,
+      {
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Transcribe this audio. Language: ${language}`,
+              },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl },
+              },
+            ],
+          },
+        ],
+        max_tokens: 2048,
+      },
+      { headers: getHeaders(), timeout: 60000 }
+    );
+
+    const choice = response.data?.choices?.[0];
+    const text = choice?.message?.content || '';
+    const usage = response.data?.usage || {};
+
+    return {
+      success: true,
+      text: text.trim(),
+      model: response.data?.model || model,
+      cost: usage?.cost || 0,
+      audioDurationMs: usage?.audio_duration_ms || 0,
+    };
+  } catch (error) {
+    const detail = error.response?.data?.error?.message || error.message;
+    console.error('[OpenRouter STT] Error:', detail);
+    throw new Error(`OpenRouter STT failed: ${detail}`);
+  }
+};
+
+/**
+ * Check if OpenRouter is configured and available.
+ */
+export const isOpenRouterConfigured = () => {
+  return Boolean(API_KEY);
+};
+
+export default {
+  OPENROUTER_TTS_MODELS,
+  OPENROUTER_STT_MODELS,
+  openRouterTextToSpeech,
+  openRouterSpeechToText,
+  isOpenRouterConfigured,
+};

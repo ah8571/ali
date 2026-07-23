@@ -11,6 +11,7 @@ import {
   getGoogleCloudClientOptions,
   hasGoogleCloudCredentials
 } from './googleCloudAuth.js';
+import { openRouterTextToSpeech, isOpenRouterConfigured } from './openRouterVoiceService.js';
 
 const DEFAULT_PROVIDER = (process.env.TTS_PROVIDER || 'google').toLowerCase();
 const OPENAI_TTS_MODEL = process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts';
@@ -179,6 +180,23 @@ const textToAudioResemble = async (text, options = {}) => {
   return Buffer.from(response.data.audio_content, 'base64');
 };
 
+const textToAudioOpenRouter = async (text, options = {}) => {
+  if (!isOpenRouterConfigured()) {
+    throw new Error('OpenRouter is not configured. Set OPENROUTER_CODING_KEY.');
+  }
+
+  const result = await openRouterTextToSpeech(text, {
+    model: options.model || 'hexgrad/kokoro-82m',
+    voice: options.voice || 'af_heart',
+  });
+
+  if (!result.audioBase64) {
+    throw new Error('OpenRouter did not return audio data.');
+  }
+
+  return Buffer.from(result.audioBase64, 'base64');
+};
+
 /**
  * Convert text to speech audio
  * @param {string} text - The text to convert to speech
@@ -206,6 +224,8 @@ export const textToAudio = async (
       audioBuffer = await textToAudioElevenLabs(text, options);
     } else if (provider === 'resemble') {
       audioBuffer = await textToAudioResemble(text, options);
+    } else if (provider === 'openrouter') {
+      audioBuffer = await textToAudioOpenRouter(text, options);
     } else {
       throw new Error(`Unsupported TTS provider: ${provider}`);
     }

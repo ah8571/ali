@@ -9,6 +9,7 @@ import {
   getGoogleCloudClientOptions,
   hasGoogleCloudCredentials
 } from './googleCloudAuth.js';
+import { openRouterSpeechToText, isOpenRouterConfigured, OPENROUTER_STT_MODELS } from './openRouterVoiceService.js';
 
 let speechClient = null;
 let openaiClient = null;
@@ -346,6 +347,26 @@ export const transcribeUploadedAudio = async (file, options = {}) => {
   });
 
   return String(response.text || '').trim();
+};
+
+/**
+ * Transcribe audio using OpenRouter (free/low-cost STT models).
+ */
+export const transcribeWithOpenRouter = async (audioBuffer, options = {}) => {
+  if (!isOpenRouterConfigured()) {
+    throw new Error('OpenRouter is not configured. Set OPENROUTER_CODING_KEY.');
+  }
+
+  const audioBase64 = audioBuffer.toString('base64');
+  const model = options.model || 'nvidia/parakeet-tdt-0.6b-v3';
+
+  const result = await openRouterSpeechToText(audioBase64, {
+    model,
+    language: options.language || 'en',
+    format: options.format || 'wav',
+  });
+
+  return String(result.text || '').trim();
 };
 
 export default {

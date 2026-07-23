@@ -23,6 +23,7 @@ import voiceRoutes from './routes/voice.js';
 import grokVoiceRoutes from './routes/grokVoice.js';
 import geminiVoiceRoutes from './routes/geminiVoice.js';
 import inworldVoiceRoutes from './routes/inworldVoice.js';
+import openRouterVoiceRoutes from './routes/openRouterVoice.js';
 import stripeRoutes from './routes/stripe.js';
 import promoRoutes from './routes/promo.js';
 
@@ -112,6 +113,7 @@ app.use('/api/voice', voiceRoutes);
 app.use('/api/voice/grok', grokVoiceRoutes);
 app.use('/api/voice/gemini', geminiVoiceRoutes);
 app.use('/api/voice/inworld', inworldVoiceRoutes);
+app.use('/api/voice/openrouter', openRouterVoiceRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use('/api/subscribe', stripeRoutes); // alias for website redirect flow
 app.use('/api/promo', promoRoutes);
