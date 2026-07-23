@@ -176,26 +176,29 @@ const UpgradeScreen = ({ navigation: _navigation }) => {
       </View>
 
       {/* Apple IAP — one-off credit purchase for compliance */}
-      {offeringPackage ? (
-        <View style={styles.section}>
-          <View style={[styles.usageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.usageTitle, { color: colors.text }]}>Need more credits?</Text>
-            <Text style={[styles.helperText, { color: colors.mutedText, marginBottom: 12 }]}>
-              One-time credit purchase via App Store.
+      <View style={styles.section}>
+        <View style={[styles.usageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.usageTitle, { color: colors.text }]}>Need more credits?</Text>
+          <Text style={[styles.helperText, { color: colors.mutedText, marginBottom: 12 }]}>
+            One-time credit purchase via App Store.
+          </Text>
+          <TouchableOpacity
+            style={[styles.upgradeButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1 }, (purchaseLoading || !offeringPackage) && styles.buttonDisabled]}
+            onPress={handleIapPurchase}
+            disabled={purchaseLoading || !offeringPackage}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.upgradeButtonText, { color: colors.text }]}>
+              {purchaseLoading ? 'Processing...' : offeringPackage ? `Purchase credits — ${offeringPackage?.product?.priceString || '$9.99'}` : 'IAP unavailable in dev builds'}
             </Text>
-            <TouchableOpacity
-              style={[styles.upgradeButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1 }, purchaseLoading && styles.buttonDisabled]}
-              onPress={handleIapPurchase}
-              disabled={purchaseLoading}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.upgradeButtonText, { color: colors.text }]}>
-                {purchaseLoading ? 'Processing...' : `Purchase credits — ${offeringPackage?.product?.priceString || '$9.99'}`}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+          {!offeringPackage && (
+            <Text style={[styles.helperText, { color: colors.mutedText, marginTop: 8, textAlign: 'center', fontSize: 12 }]}>
+              In-app purchases require a preview or production build.
+            </Text>
+          )}
         </View>
-      ) : null}
+      </View>
 
       <View style={styles.section}>
         <View style={[styles.usageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
