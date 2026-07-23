@@ -1,4 +1,4 @@
-import { AppState, Platform } from 'react-native';
+import { AppState } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
 import * as Sentry from '@sentry/react-native';
@@ -9,9 +9,6 @@ const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const SUPABASE_STORAGE_KEY = 'emmaline_supabase_session';
 const SUPABASE_STORAGE_WARNING_THRESHOLD = 1800;
 const OAUTH_REDIRECT_PATH = 'auth/callback';
-const OAUTH_BROWSER_REDIRECT_URL = String(
-  process.env.EXPO_PUBLIC_OAUTH_BROWSER_REDIRECT_URL || 'https://oov.digital/auth/callback'
-).trim();
 
 const isConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 let lastHandledOAuthRedirectUrl = null;
@@ -270,8 +267,6 @@ export const getOAuthRedirectUrl = () => AuthSession.makeRedirectUri({
   path: OAUTH_REDIRECT_PATH
 });
 
-export const getOAuthBrowserRedirectUrl = () => OAUTH_BROWSER_REDIRECT_URL;
-
 export const isOAuthRedirectUrl = (redirectUrl) => {
   const urlString = String(redirectUrl || '').trim().toLowerCase();
 
@@ -283,9 +278,7 @@ export const isOAuthRedirectUrl = (redirectUrl) => {
 };
 
 export const startOAuthSignIn = async ({ provider, scopes, queryParams } = {}) => {
-  const redirectTo = Platform.OS === 'android'
-    ? getOAuthBrowserRedirectUrl()
-    : getOAuthRedirectUrl();
+  const redirectTo = getOAuthRedirectUrl();
   console.log('[AuthFlow] startOAuthSignIn:redirectTo', { provider, redirectTo });
 
   const { data, error } = await getClient().auth.signInWithOAuth({

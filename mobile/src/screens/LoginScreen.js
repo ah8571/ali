@@ -19,7 +19,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { beginSocialOAuth, completeAuthenticatedUserProfile, loginUser, loginWithSocialProvider, registerUser } from '../services/api.js';
 import legalContent from '../content/legalContent.json';
-import { getOAuthBrowserRedirectUrl, getOAuthRedirectUrl, hasSession } from '../services/supabaseAuth.js';
+import { getOAuthRedirectUrl, hasSession } from '../services/supabaseAuth.js';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -359,9 +359,7 @@ const LoginScreen = ({ navigation, onLoginSuccess, pendingProfileSetup = null })
     logAuthFlow('handleSocialOAuth:start', { provider, mode: socialMode });
 
     try {
-      const redirectUrl = Platform.OS === 'android'
-        ? getOAuthBrowserRedirectUrl()
-        : getOAuthRedirectUrl();
+      const redirectUrl = getOAuthRedirectUrl();
       const oauthStart = await beginSocialOAuth({ provider, scopes, queryParams });
       logAuthFlow('handleSocialOAuth:oauthStart', {
         provider,
