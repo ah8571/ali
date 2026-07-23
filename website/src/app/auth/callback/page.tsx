@@ -19,41 +19,25 @@ export default function AuthCallbackPage() {
   const [appRedirectUrl, setAppRedirectUrl] = useState('');
 
   useEffect(() => {
-    setAppRedirectUrl(buildAppRedirectUrl());
+    const url = buildAppRedirectUrl();
+    setAppRedirectUrl(url);
+
+    // Try auto-redirect (may be blocked by some browsers)
+    window.location.href = url;
   }, []);
 
   return (
-    <main className="min-h-screen bg-black flex items-center justify-center px-6">
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            var nextUrl = ${JSON.stringify(appRedirectUrl)};
-            if (window.location.hash) {
-              nextUrl += window.location.hash;
-            }
-            var manualOpen = document.getElementById('manual-open');
-            if (manualOpen) {
-              manualOpen.setAttribute('href', nextUrl);
-            }
-            window.location.replace(nextUrl);
-            window.setTimeout(function () {
-              if (manualOpen) {
-                manualOpen.style.display = 'inline-flex';
-              }
-            }, 1500);
-          `,
-        }}
-      />
+    <main className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 px-6">
+      <p className="text-white/60 text-sm text-center">
+        Complete your sign-in by opening the app
+      </p>
       <a
         id="manual-open"
         href={appRedirectUrl}
-        className="hidden min-h-11 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-white/90"
+        className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-95"
       >
-        Open oov
+        Open Oov
       </a>
-      <noscript>
-        <a href={appRedirectUrl}>Open oov</a>
-      </noscript>
     </main>
   );
 }
