@@ -23,7 +23,7 @@
       }
     },
     "splash": {
-      "image": "./assets/white-outline-favicon.png",
+      "image": "./assets/app-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
