@@ -6,21 +6,30 @@ const { width, height } = Dimensions.get('window');
 
 const SLIDES = [
   {
-    icon: 'mic',
-    title: 'Voice Mode',
-    description: 'Have real-time conversations with oov. Speak naturally and get spoken responses back. Choose between English and Spanish.',
-  },
-  {
     icon: 'document-text',
     title: 'Notes & Reader',
-    description: 'Create notes during calls or on your own. The Reader reads your notes aloud — perfect for reviewing on the go.',
+    description: 'Free features — create and organize notes anytime. Tap the ☰ menu to find your notes, then listen to them read back with natural voice.',
   },
   {
-    icon: 'sparkles',
-    title: 'Credits & Premium Voices',
-    description: 'Voice Mode uses credits. Get free starter credits, buy more anytime, or subscribe for monthly credit bundles.',
+    icon: 'volume-high',
+    title: 'Transcriptions & Natural Voice Reader',
+    description: 'Tap the 🔊 listen mode to generate transcripts with premium natural voices. You get free starter credits to try it out — subscribe to continue using these features.',
+  },
+  {
+    icon: 'mic',
+    title: 'Voice Mode',
+    description: 'Have real-time conversations with oov in 8 languages. Switch your speaking language anytime in ☰ → Settings.',
   },
 ];
+
+const Squiggle = () => (
+  <View style={styles.squiggleWrap}>
+    <Text style={styles.squiggleChar}>~</Text>
+    <Text style={[styles.squiggleChar, styles.squiggleShift]}>~</Text>
+    <Text style={styles.squiggleChar}>~</Text>
+    <View style={styles.squiggleArrow} />
+  </View>
+);
 
 const OnboardingScreen = ({ onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -47,6 +56,19 @@ const OnboardingScreen = ({ onComplete }) => {
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
+        {/* Persistent header bar with menu + speaker callouts */}
+        <View style={styles.headerBar}>
+          <View style={styles.headerIconSlot}>
+            <Ionicons name="menu" size={28} color="#ffffff" />
+            <Squiggle />
+          </View>
+          <Text style={styles.headerTitle}>oov</Text>
+          <View style={styles.headerIconSlot}>
+            <Ionicons name="volume-high" size={28} color="#ffffff" />
+            <Squiggle />
+          </View>
+        </View>
+
         <FlatList
           ref={flatListRef}
           data={SLIDES}
@@ -105,13 +127,59 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // ── Persistent header bar ──
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 0,
+  },
+  headerIconSlot: {
+    alignItems: 'center',
+    width: 60,
+  },
+  headerTitle: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  // ── Squiggle annotation line ──
+  squiggleWrap: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  squiggleChar: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 14,
+    lineHeight: 12,
+    fontFamily: 'monospace',
+  },
+  squiggleShift: {
+    marginLeft: 6,
+  },
+  squiggleArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'rgba(255,255,255,0.25)',
+    marginTop: 2,
+  },
+  // ── Slides ──
   slide: {
     width,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 120,
   },
   iconWrap: {
