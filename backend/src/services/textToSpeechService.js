@@ -188,6 +188,7 @@ const textToAudioOpenRouter = async (text, options = {}) => {
   const result = await openRouterTextToSpeech(text, {
     model: options.model || 'hexgrad/kokoro-82m',
     voice: options.voice || 'af_heart',
+    responseFormat: options.responseFormat || 'mp3',
   });
 
   if (!result.audioBase64) {

@@ -126,6 +126,38 @@ const sanitizeFileStem = (value) => {
   return normalized || 'reader-audio';
 };
 
+/**
+ * Build a WAV header for raw 16-bit mono PCM data.
+ * This lets us safely concatenate PCM chunks (unlike MP3, which corrupts
+ * when naively concatenated with Buffer.concat).
+ */
+const buildWavHeader = (dataLength, sampleRate = 24000, numChannels = 1, bitsPerSample = 16) => {
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const header = Buffer.alloc(44);
+
+  // RIFF chunk descriptor
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataLength, 4);
+  header.write('WAVE', 8);
+
+  // fmt sub-chunk
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);            // Subchunk1Size (PCM = 16)
+  header.writeUInt16LE(1, 20);             // AudioFormat (1 = PCM)
+  header.writeUInt16LE(numChannels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+
+  // data sub-chunk
+  header.write('data', 36);
+  header.writeUInt32LE(dataLength, 40);
+
+  return header;
+};
+
 const resolveReaderVoiceConfig = (provider, languagePreference, voiceProfile) => {
   const providerConfig = READER_PROVIDER_CONFIG[provider] || READER_PROVIDER_CONFIG.google;
   const baseConfig = providerConfig[languagePreference] || providerConfig.en;
@@ -176,6 +208,13 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
   const chunks = splitTextIntoAudioChunks(normalizedText, provider);
   const audioBuffers = [];
 
+  // MP3 files can't be naively concatenated with Buffer.concat — each chunk
+  // has its own headers and the resulting file is corrupt (only the first
+  // chunk plays). For multi-chunk OpenRouter, request raw PCM and wrap in a
+  // WAV header so concatenation is safe.
+  const usePcmOutput = provider === 'openrouter' && chunks.length > 1;
+  const ttsFormat = usePcmOutput ? 'pcm' : 'mp3';
+
   // Process chunks in parallel batches of 2 (OpenRouter rate limit friendly)
   for (let i = 0; i < chunks.length; i += 2) {
     const batch = chunks.slice(i, i + 2);
@@ -186,9 +225,9 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
           languageCode: voiceConfig.languageCode,
           voice: voiceConfig.voice,
           speakingRate: speechRate,
-          audioEncoding: 'MP3',
-          responseFormat: 'mp3',
-          outputFormat: 'mp3',
+          audioEncoding: usePcmOutput ? 'LINEAR16' : 'MP3',
+          responseFormat: ttsFormat,
+          outputFormat: ttsFormat,
           title,
           voiceUuid: voiceConfig.voiceUuid,
           model: voiceConfig.model
@@ -202,12 +241,28 @@ const buildReaderAudioResponse = async ({ normalizedText, title, languagePrefere
     }
   }
 
-  const mergedAudio = Buffer.concat(audioBuffers);
+  let mergedAudio;
+  let fileNameSuffix;
+  let contentType;
+
+  if (usePcmOutput) {
+    // Raw PCM concatenation is safe — no headers to corrupt.
+    const pcmData = Buffer.concat(audioBuffers);
+    const wavHeader = buildWavHeader(pcmData.length);
+    mergedAudio = Buffer.concat([wavHeader, pcmData]);
+    fileNameSuffix = '.wav';
+    contentType = 'audio/wav';
+  } else {
+    mergedAudio = Buffer.concat(audioBuffers);
+    fileNameSuffix = '.mp3';
+    contentType = 'audio/mpeg';
+  }
+
   const fileStem = sanitizeFileStem(title || normalizedText.slice(0, 48));
 
   return {
-    fileName: `${fileStem}.mp3`,
-    contentType: 'audio/mpeg',
+    fileName: `${fileStem}${fileNameSuffix}`,
+    contentType,
     audioBase64: mergedAudio.toString('base64'),
     metadata: {
       characterCount: normalizedText.length,

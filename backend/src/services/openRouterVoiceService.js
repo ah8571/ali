@@ -43,6 +43,7 @@ export const openRouterTextToSpeech = async (text, options = {}) => {
 
   const model = options.model || 'hexgrad/kokoro-82m';
   const voice = options.voice || 'af_heart';
+  const responseFormat = options.responseFormat || 'mp3';
 
   try {
     const response = await axios.post(
@@ -51,7 +52,7 @@ export const openRouterTextToSpeech = async (text, options = {}) => {
         model,
         input: text,
         voice,
-        response_format: 'mp3',
+        response_format: responseFormat,
       },
       {
         headers: getHeaders(),
