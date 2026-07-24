@@ -778,9 +778,11 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     const allPcmChunks = [];
     const wavQueue = [];
     let streamDone = false;
-    let firstChunkReady = null; // resolve when first chunk arrives
 
-    // Kick off streaming synthesis — onNext fires as each chunk is produced.
+    // Don't fire up too early — buffer a few chunks so playback is continuous.
+    const MIN_BUFFERED_CHUNKS = 3;
+
+    // Kick off streaming synthesis in the background
     const streamPromise = tts.stream({
       text,
       speed: speechRate,
@@ -806,17 +808,24 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
           encoding: FileSystem.EncodingType.Base64
         }).then(() => {
           wavQueue.push(uri);
-          if (firstChunkReady) {
-            firstChunkReady();
-            firstChunkReady = null;
-          }
         }).catch(() => {});
       }
     });
 
-    // Wait for the first WAV file to be written, then start playback immediately.
-    await new Promise((resolve) => { firstChunkReady = resolve; });
-    logReaderTts('kokoroOnDevice:firstChunkReady', { queueDepth: wavQueue.length });
+    // Wait until we have enough buffered chunks or the stream finishes.
+    while (wavQueue.length < MIN_BUFFERED_CHUNKS && !streamDone) {
+      // Check if stream has completed in the background
+      const settled = await Promise.race([
+        streamPromise.then(() => true),
+        new Promise((r) => setTimeout(r, 200))
+      ]);
+      if (settled) {
+        streamDone = true;
+        try { await streamPromise; } catch { /* errors surface via onNext */ }
+      }
+    }
+
+    logReaderTts('kokoroOnDevice:firstChunkReady', { queueDepth: wavQueue.length, streamDone });
 
     let chunkIndex = 0;
     // Playback loop — drains the queue while the model keeps producing chunks
