@@ -361,6 +361,9 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
   useEffect(() => {
     preparingReadAloudRef.current = isPreparingReadAloudFallback;
+    if (!isPreparingReadAloudFallback) {
+      setKokoroEta(null);
+    }
   }, [isPreparingReadAloudFallback]);
 
   const refreshSavedAudioEntries = useCallback(async ({ hydrateLocal = false } = {}) => {
@@ -744,6 +747,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
   // On-device Kokoro TTS — model downloads once (~300 MB) on first use, then works offline with zero cost.
   const [kokoroLoadRequested, setKokoroLoadRequested] = useState(false);
+  const [kokoroEta, setKokoroEta] = useState(null); // estimated time string for on-device synthesis
   const kokoroTts = useTextToSpeech(
     models.text_to_speech.kokoro.en_us.heart(),
     { preventLoad: !kokoroLoadRequested }
@@ -955,6 +959,10 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
       // If model isn't ready yet, show progress and wait for it
       if (!kokoroTtsRef.current.isReady) {
+        const estimatedSecs = Math.ceil(normalizedText.length * 0.25);
+        const mins = Math.floor(estimatedSecs / 60);
+        const secs = estimatedSecs % 60;
+        setKokoroEta(mins > 0 ? `~${mins}m ${secs}s` : `~${secs}s`);
         setIsPreparingReadAloudFallback(true);
         // Re-check when the model finishes loading via a simple timeout retry
         const waitForModel = async () => {
@@ -1525,7 +1533,13 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
               activeOpacity={0.85}
             >
               <Text style={[styles.primaryButtonText, { color: primaryButtonTextColor }]}>
-                {isPreparingReadAloudFallback ? 'Preparing audio...' : isSpeaking ? 'Reading...' : 'Read aloud'}
+                {isPreparingReadAloudFallback && kokoroEta
+                  ? `Preparing (${kokoroEta})...`
+                  : isPreparingReadAloudFallback
+                    ? 'Preparing audio...'
+                    : isSpeaking
+                      ? 'Reading...'
+                      : 'Read aloud'}
               </Text>
             </TouchableOpacity>
 
@@ -1726,9 +1740,11 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
           ) : null}
 
           <Text style={[styles.helpText, { color: colors.mutedText }]}>
-            {isPreparingReadAloudFallback
-              ? 'Preparing the selected voice audio. Keep the app open for a few seconds.'
-              : 'Read aloud now uses the selected voice. Save audio below to keep an MP3 on this screen, then download it whenever you want.'}
+            {isPreparingReadAloudFallback && kokoroEta
+              ? `Free voice processing — estimated ${kokoroEta}. Keep the app open.`
+              : isPreparingReadAloudFallback
+                ? 'Preparing the selected voice audio. Keep the app open for a few seconds.'
+                : 'Read aloud now uses the selected voice. Save audio below to keep an MP3 on this screen, then download it whenever you want.'}
           </Text>
         </View>
       </ScrollView>
