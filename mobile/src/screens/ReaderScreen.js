@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -35,7 +36,6 @@ const MIN_BODY_INPUT_HEIGHT = 280;
 const READER_AUDIO_DIRECTORY = `${FileSystem.documentDirectory}reader-audio`;
 const READER_AUDIO_INDEX_FILE = `${READER_AUDIO_DIRECTORY}/latest.json`;
 const READER_TTS_START_TIMEOUT_MS = 2500;
-const SAVED_READER_AUDIO_REFRESH_INTERVAL_MS = 8000;
 const READER_AUDIO_VOICE_OPTIONS = [
   {
     id: 'lucy',
@@ -350,17 +350,21 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       console.error('Error loading saved reader audio:', error);
     });
 
-    const refreshIntervalId = setInterval(() => {
-      if (preparingReadAloudRef.current) {
-        return;
+    // Refresh the saved list when the app comes to the foreground — no
+    // timer-based polling needed since the list only changes after the
+    // user generates new audio (which triggers its own refresh).
+    const handleAppStateChange = (nextState) => {
+      if (nextState === 'active' && !preparingReadAloudRef.current) {
+        refreshSavedAudioEntries().catch(() => {
+          // Silently ignore background refresh failures.
+        });
       }
-      refreshSavedAudioEntries().catch((error) => {
-        console.error('Error refreshing saved reader audio:', error);
-      });
-    }, SAVED_READER_AUDIO_REFRESH_INTERVAL_MS);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
-      clearInterval(refreshIntervalId);
+      subscription.remove();
       speechCancelledRef.current = true;
       const unloadReadAloudFallbackAudio = async () => {
         if (readAloudFallbackSoundRef.current) {
@@ -589,6 +593,8 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
         if (status.didJustFinish) {
           logReaderTts('fallbackAudio:finished');
           setIsSpeaking(false);
+          // Backend auto-saves during the POST — refresh the list.
+          refreshSavedAudioEntries().catch(() => {});
           sound.unloadAsync().catch(() => {
             // Ignore cleanup failures after playback completes.
           });
@@ -607,7 +613,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     readAloudFallbackSoundRef.current = sound;
     setIsPreparingReadAloudFallback(false);
     logReaderTts('fallbackAudio:playing');
-  }, []);
+  }, [refreshSavedAudioEntries]);
 
   const speakNextChunk = useCallback(async (language, rate, fallbackConfig) => {
     if (speechCancelledRef.current) {
