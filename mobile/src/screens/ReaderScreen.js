@@ -754,72 +754,100 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
     logReaderTts('kokoroOnDevice:streamStart', { textLength: text.length });
 
-    const pcmChunks = [];
-    await tts.stream({
-      text,
-      speed: speechRate,
-      phonemize: true,
-      stopAutomatically: true,
-      onNext: (float32Audio) => {
-        // Convert Float32Array PCM (-1.0..1.0) → Int16 PCM bytes for WAV
-        const float32 = float32Audio;
-        const int16 = new Int16Array(float32.length);
-        for (let i = 0; i < float32.length; i++) {
-          const s = Math.max(-1, Math.min(1, float32[i]));
-          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        }
-        pcmChunks.push(new Uint8Array(int16.buffer));
-      }
-    });
-
-    // Concatenate PCM and wrap in WAV
-    const totalLength = pcmChunks.reduce((sum, c) => sum + c.length, 0);
-    if (totalLength === 0) {
-      throw new Error('Voice model produced no audio.');
+    // Split into sentences so we can play the first one immediately
+    // while the rest synthesizes in the background.
+    const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+    if (sentences.length === 0) {
+      throw new Error('No text to read.');
     }
-
-    const pcmData = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of pcmChunks) {
-      pcmData.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    const wavHeader = buildWavHeader(totalLength);
-    const wavBuffer = new Uint8Array(wavHeader.length + pcmData.length);
-    wavBuffer.set(wavHeader, 0);
-    wavBuffer.set(pcmData, wavHeader.length);
-
-    await ensureReaderAudioDirectory();
-    const fileStem = sanitizeAudioFileName((title || 'reader-audio').replace(/\.mp3$|\\.wav$/i, ''));
-    const targetUri = `${READER_AUDIO_DIRECTORY}/preview-${Date.now()}-${fileStem}.wav`;
-
-    await FileSystem.writeAsStringAsync(targetUri, Buffer.from(wavBuffer).toString('base64'), {
-      encoding: FileSystem.EncodingType.Base64
-    });
-    readAloudFallbackUriRef.current = targetUri;
 
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: false
     });
+    await ensureReaderAudioDirectory();
 
-    return new Promise((resolve) => {
-      Audio.Sound.createAsync(
-        { uri: targetUri },
-        { shouldPlay: true },
-        (status) => {
-          if (status.didJustFinish) {
-            setIsSpeaking(false);
-            refreshSavedAudioEntries().catch(() => {});
-            resolve();
-          }
-        }
-      ).then(({ sound }) => {
-        readAloudFallbackSoundRef.current = sound;
-        logReaderTts('kokoroOnDevice:playing');
+    const fileStem = sanitizeAudioFileName((title || 'reader-audio').replace(/\.mp3$|\.wav$/i, ''));
+
+    // Synthesise a single sentence → WAV file on disk
+    const synthesizeSentence = async (sentence, index) => {
+      const float32 = await tts.forward({ text: sentence, speed: speechRate, phonemize: true });
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      const pcmBytes = new Uint8Array(int16.buffer);
+      const wavHeader = buildWavHeader(pcmBytes.length);
+      const wavBuffer = new Uint8Array(wavHeader.length + pcmBytes.length);
+      wavBuffer.set(wavHeader, 0);
+      wavBuffer.set(pcmBytes, wavHeader.length);
+      const uri = `${READER_AUDIO_DIRECTORY}/kokoro-${Date.now()}-${index}-${fileStem}.wav`;
+      await FileSystem.writeAsStringAsync(uri, Buffer.from(wavBuffer).toString('base64'), {
+        encoding: FileSystem.EncodingType.Base64
       });
-    });
+      return uri;
+    };
+
+    // Synthesise the first sentence and start playback immediately
+    let nextSentenceIndex = 1;
+    const totalSentences = sentences.length;
+    const playQueue = [];
+    let backgroundDone = false;
+
+    // Kick off background synthesis for sentences 2…N
+    const backgroundSynthesize = (async () => {
+      for (let i = nextSentenceIndex; i < totalSentences; i++) {
+        if (speechCancelledRef.current) break;
+        try {
+          playQueue.push(await synthesizeSentence(sentences[i], i));
+        } catch (e) {
+          logReaderTts('kokoroOnDevice:synthesisError', { sentenceIndex: i, error: e?.message });
+        }
+      }
+      backgroundDone = true;
+    })();
+
+    const firstUri = await synthesizeSentence(sentences[0], 0);
+    readAloudFallbackUriRef.current = firstUri;
+
+    // Playback loop — drain queue as sentences become available
+    let currentUri = firstUri;
+    while (!speechCancelledRef.current) {
+      await new Promise((resolve) => {
+        Audio.Sound.createAsync(
+          { uri: currentUri },
+          { shouldPlay: true },
+          (status) => {
+            if (status.didJustFinish) resolve();
+          }
+        ).then(({ sound }) => {
+          readAloudFallbackSoundRef.current = sound;
+          logReaderTts('kokoroOnDevice:playing', { sentenceIndex: nextSentenceIndex - 1, totalSentences });
+        });
+      });
+
+      // Clean up the file we just finished playing
+      FileSystem.deleteAsync(currentUri, { idempotent: true }).catch(() => {});
+
+      if (playQueue.length > 0) {
+        currentUri = playQueue.shift();
+        nextSentenceIndex += 1;
+      } else if (backgroundDone) {
+        break;
+      } else {
+        // Wait a tick and check again
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+
+    setIsSpeaking(false);
+    refreshSavedAudioEntries().catch(() => {});
+
+    // Clean up any remaining queued files
+    for (const uri of playQueue) {
+      FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+    }
   }, [refreshSavedAudioEntries]);
 
   const handleReadAloud = useCallback(async () => {
