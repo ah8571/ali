@@ -18,6 +18,8 @@ import * as Sharing from 'expo-sharing';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTextToSpeech, models } from 'react-native-executorch';
+import { Buffer } from 'buffer';
 import {
   deleteSavedReaderAudio,
   generateReaderAudio,
@@ -50,7 +52,7 @@ const READER_AUDIO_VOICE_OPTIONS = [
   {
     id: 'kokoro',
     label: 'Free voice',
-    provider: 'openrouter'
+    provider: 'kokoro-on-device'
   },
   {
     id: 'basic',
@@ -58,6 +60,36 @@ const READER_AUDIO_VOICE_OPTIONS = [
     provider: 'device'
   }
 ];
+
+const KOKORO_SAMPLE_RATE = 24000;
+
+const buildWavHeader = (dataLength, sampleRate = KOKORO_SAMPLE_RATE, numChannels = 1, bitsPerSample = 16) => {
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const header = new Uint8Array(44);
+  const view = new DataView(header.buffer);
+
+  // RIFF chunk descriptor
+  header.set([0x52, 0x49, 0x46, 0x46], 0); // 'RIFF'
+  view.setUint32(4, 36 + dataLength, true);
+  header.set([0x57, 0x41, 0x56, 0x45], 8); // 'WAVE'
+
+  // fmt sub-chunk
+  header.set([0x66, 0x6D, 0x74, 0x20], 12); // 'fmt '
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // data sub-chunk
+  header.set([0x64, 0x61, 0x74, 0x61], 36); // 'data'
+  view.setUint32(40, dataLength, true);
+
+  return header;
+};
 
 const logReaderTts = (step, details = null) => {
   if (details === null || details === undefined) {
@@ -727,6 +759,91 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     });
   }, [playReadAloudFallbackAudio]);
 
+  // On-device Kokoro TTS — model downloads once (~300 MB) on first use, then works offline with zero cost.
+  const [kokoroLoadRequested, setKokoroLoadRequested] = useState(false);
+  const kokoroTts = useTextToSpeech(
+    models.text_to_speech.kokoro.en_us.heart,
+    { preventLoad: !kokoroLoadRequested }
+  );
+
+  // Keep refs in sync so the streaming callback reads fresh values
+  const kokoroTtsRef = useRef(kokoroTts);
+  kokoroTtsRef.current = kokoroTts;
+
+  const handleKokoroOnDevice = useCallback(async (text, title, speechRate) => {
+    const tts = kokoroTtsRef.current;
+
+    if (tts.error) {
+      throw new Error(tts.error.message || 'Kokoro model failed to load');
+    }
+
+    if (!tts.isReady) {
+      throw new Error('Voice model is still downloading. Please wait and try again.');
+    }
+
+    logReaderTts('kokoroOnDevice:streamStart', { textLength: text.length });
+
+    const pcmChunks = [];
+    await tts.stream({
+      text,
+      speed: speechRate,
+      phonemize: true,
+      stopAutomatically: true,
+      onNext: (pcmBuffer) => {
+        pcmChunks.push(new Uint8Array(pcmBuffer));
+      }
+    });
+
+    // Concatenate PCM and wrap in WAV
+    const totalLength = pcmChunks.reduce((sum, c) => sum + c.length, 0);
+    if (totalLength === 0) {
+      throw new Error('Voice model produced no audio.');
+    }
+
+    const pcmData = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of pcmChunks) {
+      pcmData.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    const wavHeader = buildWavHeader(totalLength);
+    const wavBuffer = new Uint8Array(wavHeader.length + pcmData.length);
+    wavBuffer.set(wavHeader, 0);
+    wavBuffer.set(pcmData, wavHeader.length);
+
+    await ensureReaderAudioDirectory();
+    const fileStem = sanitizeAudioFileName((title || 'reader-audio').replace(/\.mp3$|\\.wav$/i, ''));
+    const targetUri = `${READER_AUDIO_DIRECTORY}/preview-${Date.now()}-${fileStem}.wav`;
+
+    await FileSystem.writeAsStringAsync(targetUri, Buffer.from(wavBuffer).toString('base64'), {
+      encoding: FileSystem.EncodingType.Base64
+    });
+    readAloudFallbackUriRef.current = targetUri;
+
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false
+    });
+
+    return new Promise((resolve) => {
+      Audio.Sound.createAsync(
+        { uri: targetUri },
+        { shouldPlay: true },
+        (status) => {
+          if (status.didJustFinish) {
+            setIsSpeaking(false);
+            refreshSavedAudioEntries().catch(() => {});
+            resolve();
+          }
+        }
+      ).then(({ sound }) => {
+        readAloudFallbackSoundRef.current = sound;
+        logReaderTts('kokoroOnDevice:playing');
+      });
+    });
+  }, [refreshSavedAudioEntries]);
+
   const handleReadAloud = useCallback(async () => {
     const normalizedText = String(readerText || '').trim();
 
@@ -744,6 +861,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
     const voiceOption = READER_AUDIO_VOICE_OPTIONS.find((o) => o.id === selectedReaderVoiceId);
     const isBasicVoice = voiceOption?.provider === 'device';
+    const isKokoroOnDevice = voiceOption?.provider === 'kokoro-on-device';
 
     const [languagePreference, savedSpeechRate] = await Promise.all([
       getCallLanguagePreference(),
@@ -761,6 +879,57 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       setIsSpeaking(true);
       logReaderTts('handleReadAloud:basicVoice', { chunks: chunks.length, language });
       speakNextChunk(language, speechRate, null);
+      return;
+    }
+
+    // On-device Kokoro — no backend call, no network, zero cost.
+    if (isKokoroOnDevice) {
+      logReaderTts('handleReadAloud:kokoroOnDevice', {
+        speechRate,
+        textLength: normalizedText.length,
+        modelReady: kokoroTtsRef.current.isReady
+      });
+
+      // Trigger model download on first use
+      if (!kokoroLoadRequested) {
+        setKokoroLoadRequested(true);
+      }
+
+      // If model isn't ready yet, show progress and wait for it
+      if (!kokoroTtsRef.current.isReady) {
+        setIsPreparingReadAloudFallback(true);
+        // Re-check when the model finishes loading via a simple timeout retry
+        const waitForModel = async () => {
+          const tts = kokoroTtsRef.current;
+          if (tts.isReady) {
+            setIsPreparingReadAloudFallback(false);
+            speechCancelledRef.current = false;
+            setIsSpeaking(true);
+            try {
+              await handleKokoroOnDevice(normalizedText, documentTitle, speechRate);
+            } catch (error) {
+              logReaderTts('handleReadAloud:kokoroFailed', { error: error?.message || String(error) });
+              setIsSpeaking(false);
+              Alert.alert('Reader error', error?.message || 'Unable to use on-device voice. Try again.');
+            }
+          } else if (tts.error) {
+            setIsPreparingReadAloudFallback(false);
+            Alert.alert('Reader error', tts.error.message || 'Voice model failed to load.');
+          } else {
+            setTimeout(waitForModel, 1000);
+          }
+        };
+        waitForModel();
+        return;
+      }
+
+      speechCancelledRef.current = false;
+      setIsSpeaking(true);
+      handleKokoroOnDevice(normalizedText, documentTitle, speechRate).catch((error) => {
+        logReaderTts('handleReadAloud:kokoroFailed', { error: error?.message || String(error) });
+        setIsSpeaking(false);
+        Alert.alert('Reader error', error?.message || 'Unable to use on-device voice. Try again.');
+      });
       return;
     }
 
@@ -789,7 +958,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
       setIsSpeaking(false);
       Alert.alert('Reader error', error?.message || 'Unable to play the selected voice right now.');
     });
-  }, [documentTitle, playReadAloudFallbackAudio, readerText, selectedReaderVoiceId, stopReading]);
+  }, [documentTitle, handleKokoroOnDevice, kokoroLoadRequested, playReadAloudFallbackAudio, readerText, selectedReaderVoiceId, stopReading]);
 
   const handleImportDocument = async () => {
     try {
