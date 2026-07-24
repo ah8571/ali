@@ -1065,25 +1065,30 @@ export const generateReaderAudio = async ({ text, title, provider = null, voiceP
   }
 };
 
-export const saveReaderAudio = async ({ text, title, provider = null, voiceProfile = null, languagePreference = 'en', speechRate = 1 }) => {
+export const saveReaderAudio = async ({ text, title, provider = null, voiceProfile = null, languagePreference = 'en', speechRate = 1, audioBase64 = null }) => {
   try {
     await addTokenToHeaders();
-    logApiRequest('post', '/reader/audio/save', {
-      title: title || null,
-      provider: provider || null,
-      voiceProfile: voiceProfile || null,
-      languagePreference,
-      speechRate,
-      characterCount: String(text || '').trim().length
-    });
-    const response = await apiClient.post('/reader/audio/save', {
+    const body = {
       text,
       title,
       provider,
       voiceProfile,
       languagePreference,
       speechRate
+    };
+    if (audioBase64) {
+      body.audioBase64 = audioBase64;
+    }
+    logApiRequest('post', '/reader/audio/save', {
+      title: title || null,
+      provider: provider || null,
+      voiceProfile: voiceProfile || null,
+      languagePreference,
+      speechRate,
+      characterCount: String(text || '').trim().length,
+      hasAudioBase64: Boolean(audioBase64)
     });
+    const response = await apiClient.post('/reader/audio/save', body);
 
     return {
       success: true,

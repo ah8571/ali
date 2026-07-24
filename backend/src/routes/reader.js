@@ -342,7 +342,27 @@ router.post('/audio', authMiddleware, async (req, res) => {
 router.post('/audio/save', authMiddleware, async (req, res) => {
   try {
     const requestData = normalizeReaderAudioRequest(req.body);
-    const audioResponse = await buildReaderAudioResponse(requestData);
+
+    // On-device voices (Kokoro) submit pre-generated audio directly.
+    const isOnDeviceUpload = requestData.provider === 'device' && typeof req.body.audioBase64 === 'string' && req.body.audioBase64.length > 0;
+
+    let audioResponse;
+    if (isOnDeviceUpload) {
+      audioResponse = {
+        fileName: `${sanitizeFileStem(requestData.title || requestData.normalizedText.slice(0, 48))}.wav`,
+        contentType: 'audio/wav',
+        audioBase64: req.body.audioBase64,
+        metadata: {
+          characterCount: requestData.normalizedText.length,
+          chunkCount: 1,
+          languageCode: 'en-US',
+          provider: 'device',
+          voiceProfile: 'kokoro-on-device'
+        }
+      };
+    } else {
+      audioResponse = await buildReaderAudioResponse(requestData);
+    }
 
     // Deduct credits for reader (2/min for natural voice, 0 for basic)
     const creditMode = requestData.provider === 'resemble' || requestData.provider === 'openrouter'

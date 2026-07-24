@@ -661,6 +661,18 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
     let callbackFired = false;
 
+    // Ensure audio routes to speaker on Android (expo-speech callbacks are
+    // unreliable on some devices, but the utterance itself needs speaker output).
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldPlay: true
+      });
+    } catch {
+      // Audio mode is best-effort — don't block speech.
+    }
+
     Speech.speak(nextChunk, {
       language,
       rate,
@@ -769,7 +781,10 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
 
     const fileStem = sanitizeAudioFileName((title || 'reader-audio').replace(/\.mp3$|\.wav$/i, ''));
 
-    // Synthesise a single sentence → WAV file on disk
+    // Collect all PCM chunks so we can save a full concatenated WAV at the end.
+    const allPcmChunks = [];
+
+    // Synthesise a single sentence → WAV file on disk + collect PCM bytes
     const synthesizeSentence = async (sentence, index) => {
       const float32 = await tts.forward({ text: sentence, speed: speechRate, phonemize: true });
       const int16 = new Int16Array(float32.length);
@@ -778,6 +793,7 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
         int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
       }
       const pcmBytes = new Uint8Array(int16.buffer);
+      allPcmChunks.push(pcmBytes);
       const wavHeader = buildWavHeader(pcmBytes.length);
       const wavBuffer = new Uint8Array(wavHeader.length + pcmBytes.length);
       wavBuffer.set(wavHeader, 0);
@@ -842,7 +858,41 @@ const ReaderScreen = ({ onAppHeaderScroll }) => {
     }
 
     setIsSpeaking(false);
-    refreshSavedAudioEntries().catch(() => {});
+
+    // Auto-save the full concatenated audio for future listening.
+    if (!speechCancelledRef.current && allPcmChunks.length > 0) {
+      try {
+        const totalPcm = allPcmChunks.reduce((sum, c) => sum + c.length, 0);
+        const fullPcm = new Uint8Array(totalPcm);
+        let off = 0;
+        for (const c of allPcmChunks) {
+          fullPcm.set(c, off);
+          off += c.length;
+        }
+        const fullWavHeader = buildWavHeader(totalPcm);
+        const fullWav = Buffer.concat([Buffer.from(fullWavHeader), Buffer.from(fullPcm)]);
+        const fullBase64 = fullWav.toString('base64');
+
+        saveReaderAudio({
+          text,
+          title,
+          provider: 'device',
+          voiceProfile: 'kokoro-on-device',
+          audioBase64: fullBase64
+        }).then((result) => {
+          if (result.success) {
+            logReaderTts('kokoroOnDevice:saved', { savedAudioId: result.savedAudioId });
+            refreshSavedAudioEntries().catch(() => {});
+          } else {
+            logReaderTts('kokoroOnDevice:saveFailed', { error: result.error });
+          }
+        }).catch((e) => {
+          logReaderTts('kokoroOnDevice:saveFailed', { error: e?.message });
+        });
+      } catch (e) {
+        logReaderTts('kokoroOnDevice:saveFailed', { error: e?.message });
+      }
+    }
 
     // Clean up any remaining queued files
     for (const uri of playQueue) {
